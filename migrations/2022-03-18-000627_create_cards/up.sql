@@ -1,0 +1,5 @@
+CREATE TABLE cards (
+  id SERIAL PRIMARY KEY,
+  front TEXT NOT NULL,
+  back TEXT NOT NULL
+)
