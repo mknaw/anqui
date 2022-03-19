@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
-use super::*;
 use super::schema::cards;
+use super::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Queryable, Serialize)]
 pub struct Card {
@@ -18,22 +18,22 @@ pub struct NewCard {
 
 impl Card {
     // pub fn find_all() -> Result<Vec<Self>, ApiError> {
-        // let conn = db::connection()?;
+    // let conn = db::connection()?;
 
-        // let users = user::table
-            // .load::<User>(&conn)?;
+    // let users = user::table
+    // .load::<User>(&conn)?;
 
-        // Ok(users)
+    // Ok(users)
     // }
 
     // pub fn find(id: Uuid) -> Result<Self, ApiError> {
-        // let conn = db::connection()?;
+    // let conn = db::connection()?;
 
-        // let user = user::table
-            // .filter(user::id.eq(id))
-            // .first(&conn)?;
+    // let user = user::table
+    // .filter(user::id.eq(id))
+    // .first(&conn)?;
 
-        // Ok(user)
+    // Ok(user)
     // }
 
     pub fn create(new_card: NewCard) -> Card {
@@ -46,25 +46,25 @@ impl Card {
     }
 
     // pub fn update(id: Uuid, user: UserMessage) -> Result<Self, ApiError> {
-        // let conn = db::connection()?;
+    // let conn = db::connection()?;
 
-        // let user = diesel::update(user::table)
-            // .filter(user::id.eq(id))
-            // .set(user)
-            // .get_result(&conn)?;
+    // let user = diesel::update(user::table)
+    // .filter(user::id.eq(id))
+    // .set(user)
+    // .get_result(&conn)?;
 
-        // Ok(user)
+    // Ok(user)
     // }
 
     // pub fn delete(id: Uuid) -> Result<usize, ApiError> {
-        // let conn = db::connection()?;
+    // let conn = db::connection()?;
 
-        // let res = diesel::delete(
-                // user::table
-                    // .filter(user::id.eq(id))
-            // )
-            // .execute(&conn)?;
+    // let res = diesel::delete(
+    // user::table
+    // .filter(user::id.eq(id))
+    // )
+    // .execute(&conn)?;
 
-        // Ok(res)
+    // Ok(res)
     // }
 }
