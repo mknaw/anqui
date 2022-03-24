@@ -61,8 +61,12 @@ struct FeedbackBarProps {
 
 #[function_component(FeedbackBar)]
 fn feedback_bar(FeedbackBarProps { onclick }: &FeedbackBarProps) -> Html {
-
-    let feedbacks = [Feedback::Fail, Feedback::Hard, Feedback::Good, Feedback::Easy];
+    let feedbacks = [
+        Feedback::Fail,
+        Feedback::Hard,
+        Feedback::Good,
+        Feedback::Easy,
+    ];
     html! {
         <div id="feedback">
             {
@@ -90,9 +94,7 @@ fn feedback_button(props: &FeedbackButtonProps) -> Html {
     let on_feedback_click = {
         let onclick = props.onclick.clone();
         let feedback = props.feedback.clone();
-        Callback::from(move |_| {
-            onclick.emit(feedback.clone())
-        })
+        Callback::from(move |_| onclick.emit(feedback.clone()))
     };
 
     html! {
@@ -104,8 +106,7 @@ fn feedback_button(props: &FeedbackButtonProps) -> Html {
 
 #[function_component(App)]
 fn app() -> Html {
-    let cards = use_state(|| vec![]);
-    let index = use_state(|| 0);
+    let card_queue = use_state(|| vec![]);
     let front_shown = use_state(|| true);
 
     let on_card_click = {
@@ -114,81 +115,68 @@ fn app() -> Html {
     };
 
     let on_feedback_click = {
-        let index = index.clone();
-        let cards_len = cards.len();
+        let card_queue = card_queue.clone();
+        let cards = (*card_queue).clone();
         let front_shown = front_shown.clone();
-        // This is dogshit
-        // Surely must be a way to .iter().cycle() or something but whatever
         Callback::from(move |feedback: Feedback| {
+            let mut cards = cards.clone();
             log::info!("{}", label_feedback(&feedback));
             let front_shown_val = !*front_shown;
             front_shown.set(front_shown_val);
             if !front_shown_val {
-                return
+                return;
             }
-            let new_index = if *index + 1 < cards_len {
-                *index + 1
-            } else {
-                0
-            };
-            index.set(new_index)
+            cards.pop();
+            card_queue.set(cards)
         })
     };
 
-    {
-        let cards = cards.clone();
-        use_effect_with_deps(
-            move |_| {
-                let cards = cards.clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    let fetched_cards: Vec<Card> = Request::get("http://localhost:8080/cards/")
-                        .send()
-                        .await
-                        .unwrap()
-                        .json()
-                        .await
-                        .unwrap();
-                    cards.set(fetched_cards);
-                });
-                || ()
-            },
-            (),
-        );
-    }
-    log::info!("{}", cards.len());
-
-    let mut feedback_class = "feedback-btn bordered ".to_string();
-    feedback_class.push_str(if *front_shown { "front" } else { "back" });
+    let fetch_cards = {
+        let card_queue = card_queue.clone();
+        Callback::from(move |_| {
+            let card_queue = card_queue.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                let fetched_cards: Vec<Card> = Request::get("http://localhost:8080/cards/")
+                    .send()
+                    .await
+                    .unwrap()
+                    .json()
+                    .await
+                    .unwrap();
+                card_queue.set(fetched_cards);
+            });
+        })
+    };
 
     html! {
         <div id={ "content" }>
             {
-                if cards.len() > 0 {
-                    html! {
+                match (*card_queue).last() {
+                    Some(c) => html! {
                         <>
                             <CardDisplay
-                                card={ cards[*index].clone() }
+                                card={ c.clone() }
                                 front_shown={ *front_shown.clone() }
-                                onclick={ on_card_click.clone() } />
+                                onclick={ on_card_click.clone() }
+                            />
                             {
-                                if *front_shown {
-                                    html! {}
-                                } else {
+                                if !(*front_shown) {
                                     html! {
                                         <FeedbackBar
                                             onclick={ on_feedback_click.clone() }
                                         />
                                     }
+                                } else {
+                                    html! {}
                                 }
                             }
                         </>
-                    }
-                } else {
-                    html! {
-                        <button>
+                    },
+                    None => html!{
+                        <button onclick={ fetch_cards }>
                             { "commencer" }
                         </button>
-                    }
+                    },
                 }
             }
         </div>
