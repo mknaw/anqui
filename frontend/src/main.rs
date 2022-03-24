@@ -67,6 +67,7 @@ fn feedback_bar(FeedbackBarProps { onclick }: &FeedbackBarProps) -> Html {
         Feedback::Good,
         Feedback::Easy,
     ];
+
     html! {
         <div id="feedback">
             {
@@ -120,14 +121,24 @@ fn app() -> Html {
         let front_shown = front_shown.clone();
         Callback::from(move |feedback: Feedback| {
             let mut cards = cards.clone();
-            log::info!("{}", label_feedback(&feedback));
             let front_shown_val = !*front_shown;
             front_shown.set(front_shown_val);
             if !front_shown_val {
                 return;
             }
-            cards.pop();
-            card_queue.set(cards)
+            let popped = cards.pop();
+            card_queue.set(cards);
+
+            popped.map(|card: Card| {
+                wasm_bindgen_futures::spawn_local(async move {
+                    let url = format!("http://localhost:8080/cards/{}/feedback/", card.id);
+                    Request::post(url.as_str())
+                        .body(label_feedback(&feedback))
+                        .send()
+                        .await
+                        .unwrap();
+                });
+            });
         })
     };
 

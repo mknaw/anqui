@@ -2,11 +2,15 @@ use super::schema::cards;
 use super::*;
 use serde::{Deserialize, Serialize};
 
-#[derive(Queryable, Serialize)]
+#[derive(Identifiable, Queryable, Serialize)]
 pub struct Card {
     pub id: i32,
     pub front: String,
     pub back: String,
+    pub fail_count: i16,
+    pub hard_count: i16,
+    pub good_count: i16,
+    pub easy_count: i16,
 }
 
 #[derive(Deserialize, Insertable, Serialize)]
@@ -14,6 +18,15 @@ pub struct Card {
 pub struct NewCard {
     pub front: String,
     pub back: String,
+}
+
+#[derive(AsChangeset)]
+#[table_name = "cards"]
+pub struct PostFeedback {
+    pub fail_count: Option<i16>,
+    pub hard_count: Option<i16>,
+    pub good_count: Option<i16>,
+    pub easy_count: Option<i16>,
 }
 
 impl Card {
