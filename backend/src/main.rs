@@ -5,16 +5,19 @@ extern crate backend;
 extern crate diesel;
 
 use self::diesel::prelude::*;
-use actix_cors::Cors;
-use actix_web::{delete, get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_files::{Files, NamedFile};
+use actix_web::*;
 use backend::models::*;
 use backend::*;
 use dotenv::dotenv;
 use serde::Deserialize;
 use std::env;
 
-// TODO use actix scopes for this
-#[get("/decks/")]
+async fn index(_data: web::Path<()>) -> impl Responder {
+    NamedFile::open_async("./frontend/dist/index.html").await
+}
+
+#[get("/")]
 async fn read_decks() -> impl Responder {
     use backend::schema::decks::dsl::*;
 
@@ -27,7 +30,7 @@ async fn read_decks() -> impl Responder {
     HttpResponse::Ok().json(results)
 }
 
-#[delete("/decks/{id}/")]
+#[delete("{id}/")]
 async fn delete_deck(path: web::Path<(i32,)>) -> impl Responder {
     use backend::schema::decks::dsl::*;
 
@@ -40,14 +43,14 @@ async fn delete_deck(path: web::Path<(i32,)>) -> impl Responder {
 }
 
 // TODO could really interpret all POSTs (or PUTs maybe) as "new" instead of having URL
-#[post("/decks/new/")]
+#[post("new/")]
 async fn new_deck(new_deck: web::Json<NewDeck>) -> impl Responder {
     info!("/decks/new/ POST");
     let deck = Deck::create(new_deck.into_inner());
     HttpResponse::Ok().json(deck)
 }
 
-#[get("/decks/{id}/cards/")]
+#[get("{id}/cards/")]
 async fn read_cards(path: web::Path<(i32,)>) -> impl Responder {
     use backend::schema::cards::dsl::*;
 
@@ -67,7 +70,7 @@ struct NewWebCard {
     back: String,
 }
 
-#[post("/decks/{id}/cards/new/")]
+#[post("/{id}/cards/new/")]
 async fn new_card(path: web::Path<(i32,)>, payload: web::Json<NewWebCard>) -> impl Responder {
     let payload = payload.into_inner();
     info!("{} {}", payload.front, payload.back);
@@ -117,14 +120,21 @@ async fn main() -> std::io::Result<()> {
     env_logger::init();
 
     HttpServer::new(|| {
-        let cors = Cors::permissive(); // temporary
-        App::new().wrap(cors)
-            .service(read_decks)
-            .service(new_deck)
-            .service(delete_deck)
-            .service(read_cards)
-            .service(new_card)
-            .service(post_feedback)
+        App::new()
+            .service(
+                web::scope("/api")
+                    .service(
+                        web::scope("/decks")
+                            .service(read_decks)
+                            .service(new_deck)
+                            .service(delete_deck)
+                            .service(read_cards)
+                            .service(new_card)
+                    )
+                    .service(post_feedback)
+            )
+            .service(Files::new("/", "frontend/dist/").index_file("index.html"))
+            .default_service(web::get().to(index))
     })
     .bind((host, port.parse::<u16>().unwrap()))?
     .run()

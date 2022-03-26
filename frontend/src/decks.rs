@@ -46,7 +46,7 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
         Callback::from(move |_| {
             let hidden = hidden.clone();
             wasm_bindgen_futures::spawn_local(async move {
-                let url = format!("http://localhost:8080/decks/{}/", deck.id);
+                let url = format!("/api/decks/{}/", deck.id);
                 Request::delete(&url).send().await.unwrap();
                 hidden.set(true);
             });
@@ -99,7 +99,7 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
                     return
                 }
                 wasm_bindgen_futures::spawn_local(async move {
-                    let url = "http://localhost:8080/decks/new/";
+                    let url = "/api/decks/new/";
                     let new_deck: Deck = Request::post(url)
                         .header("Content-Type", "application/json")
                         .body(serde_json::to_string(&json!({"name": name})).unwrap())
@@ -143,7 +143,7 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
         use_effect_with_deps(move |_| {
             let cards = cards.clone();
             wasm_bindgen_futures::spawn_local(async move {
-                let url = format!("http://localhost:8080/decks/{}/cards/", id);
+                let url = format!("/api/decks/{}/cards/", id);
                 let fetched_cards: Vec<Card> = Request::get(&url)
                     .send()
                     .await
@@ -177,7 +177,7 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
                 return
             }
             wasm_bindgen_futures::spawn_local(async move {
-                let url = format!("http://localhost:8080/decks/{}/cards/new/", id);
+                let url = format!("/api/decks/{}/cards/new/", id);
                 let payload = json!({ "front": front, "back": back });
                 let card: Card = Request::post(&url)
                     .header("Content-Type", "application/json")
@@ -229,8 +229,7 @@ pub fn deck_home() -> Html {
         use_effect_with_deps(move |_| {
             let decks = decks.clone();
             wasm_bindgen_futures::spawn_local(async move {
-                let url = "http://localhost:8080/decks/";
-                let fetched_decks: Vec<Deck> = Request::get(url)
+                let fetched_decks: Vec<Deck> = Request::get("/api/decks/")
                     .send()
                     .await
                     .unwrap()

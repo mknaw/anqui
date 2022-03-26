@@ -119,7 +119,7 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
         use_effect_with_deps(move |_| {
             let card_queue = card_queue.clone();
             wasm_bindgen_futures::spawn_local(async move {
-                let url = format!("http://localhost:8080/decks/{}/cards/", id);
+                let url = format!("/api/decks/{}/cards/", id);
                 let fetched_cards: Vec<Card> = Request::get(&url)
                     .send()
                     .await
@@ -154,7 +154,7 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
 
             popped.map(|card: Card| {
                 wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!("http://localhost:8080/cards/{}/feedback/", card.id);
+                    let url = format!("/api/cards/{}/feedback/", card.id);
                     Request::post(url.as_str())
                         .body(label_feedback(&feedback))
                         .send()
