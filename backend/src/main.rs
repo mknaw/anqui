@@ -10,24 +10,59 @@ use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use backend::models::*;
 use backend::*;
 use dotenv::dotenv;
+use serde::Deserialize;
 use std::env;
 
-#[get("/cards/")]
-async fn read_cards() -> impl Responder {
+// TODO use actix scopes for this
+#[get("/decks/")]
+async fn read_decks() -> impl Responder {
+    use backend::schema::decks::dsl::*;
+
+    let conn = establish_connection();
+    let results = decks
+        .load::<Deck>(&conn)
+        .expect("Error loading decks");
+
+    info!("/decks/ GET");
+    HttpResponse::Ok().json(results)
+}
+
+#[post("/decks/new/")]
+async fn new_deck(new_deck: web::Json<NewDeck>) -> impl Responder {
+    info!("/decks/new/ POST");
+    let deck = Deck::create(new_deck.into_inner());
+    HttpResponse::Ok().json(deck)
+}
+
+#[get("/decks/{id}/cards/")]
+async fn read_cards(path: web::Path<(i32,)>) -> impl Responder {
     use backend::schema::cards::dsl::*;
 
     let conn = establish_connection();
     let results = cards
+        .filter(deck_id.eq(path.into_inner().0))
         .load::<Card>(&conn)
         .expect("Error loading cards");
 
-    info!("/cards/ GET");
     HttpResponse::Ok().json(results)
 }
 
-#[post("/cards/new/")]
-async fn new_card(new_card: web::Json<NewCard>) -> impl Responder {
-    let card = Card::create(new_card.into_inner());
+// TODO don't love the duplication between here and NewCard, and even Card to some extent
+#[derive(Deserialize)]
+struct NewWebCard {
+    front: String,
+    back: String,
+}
+
+#[post("/decks/{id}/cards/new/")]
+async fn new_card(path: web::Path<(i32,)>, payload: web::Json<NewWebCard>) -> impl Responder {
+    let payload = payload.into_inner();
+    info!("{} {}", payload.front, payload.back);
+    let card = Card::create(NewCard {
+        deck_id: path.into_inner().0,
+        front: payload.front,
+        back: payload.back,
+    });
     HttpResponse::Ok().json(card)
 }
 
@@ -41,10 +76,6 @@ async fn post_feedback(path: web::Path<(i32,)>, feedback: String) -> impl Respon
         .filter(id.eq(card_id))
         .first::<Card>(&conn)
         .unwrap();
-
-    if feedback.eq("fail") {
-        info!("and it matched the conditional");
-    }
 
     // TODO would be good I guess to have a less janky way to do this,
     // although I guess it is not the end of the world.
@@ -75,6 +106,8 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
         let cors = Cors::permissive(); // temporary
         App::new().wrap(cors)
+            .service(read_decks)
+            .service(new_deck)
             .service(read_cards)
             .service(new_card)
             .service(post_feedback)
