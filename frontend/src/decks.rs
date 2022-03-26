@@ -25,25 +25,53 @@ pub fn decks(DeckListProps { decks }: &DeckListProps) -> Html {
         <table id={ "decks" }>
             {
                 (*decks).clone().into_iter().map(|deck| {
-                    html!{
-                        <tr key={ deck.id }>
-                            <td class={ "emoji" }>
-                                <Link<Route> to={ Route::DeckDetail { id: deck.id } }>
-                                    { "⚙️" }
-                                </Link<Route>>
-                            </td>
-                            <td class={ "emoji" }>{ "🪓" }</td>
-                            <td class={ "emoji" }>
-                                <Link<Route> to={ Route::Revision { id: deck.id } }>
-                                    { "🛎️" }
-                                </Link<Route>>
-                            </td>
-                            <td>{ deck.name }</td>
-                        </tr>
-                    }
+                    html!{ <DeckListRow { deck } /> }
                 }).collect::<Html>()
             }
         </table>
+    }
+}
+
+#[derive(PartialEq, Properties)]
+pub struct DeckListRowProps {
+    deck: Deck,
+}
+
+#[function_component(DeckListRow)]
+fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
+    let hidden = use_state(|| false);
+    let delete_deck = {
+        let hidden = hidden.clone();
+        let deck = deck.clone();
+        Callback::from(move |_| {
+            let hidden = hidden.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                let url = format!("http://localhost:8080/decks/{}/", deck.id);
+                Request::delete(&url).send().await.unwrap();
+                hidden.set(true);
+            });
+        })
+    };
+    let class = if *hidden { "hidden" } else { "" };
+    html!{
+        <tr key={ deck.id } { class }>
+            <td class={ "emoji" }>
+                <Link<Route> to={ Route::DeckDetail { id: deck.id } }>
+                    { "⚙️" }
+                </Link<Route>>
+            </td>
+            <td class={ "emoji" }>
+                <span onclick={ delete_deck }>
+                    { "🪓" }
+                </span>
+            </td>
+            <td class={ "emoji" }>
+                <Link<Route> to={ Route::Revision { id: deck.id } }>
+                    { "🛎️" }
+                </Link<Route>>
+            </td>
+            <td>{ &deck.name }</td>
+        </tr>
     }
 }
 
@@ -72,7 +100,6 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
                 }
                 wasm_bindgen_futures::spawn_local(async move {
                     let url = "http://localhost:8080/decks/new/";
-                    // TODO now must add our new deck back onto decks vec
                     let new_deck: Deck = Request::post(url)
                         .header("Content-Type", "application/json")
                         .body(serde_json::to_string(&json!({"name": name})).unwrap())
@@ -152,7 +179,6 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
             wasm_bindgen_futures::spawn_local(async move {
                 let url = format!("http://localhost:8080/decks/{}/cards/new/", id);
                 let payload = json!({ "front": front, "back": back });
-                // TODO now must add our new deck back onto decks vec
                 let card: Card = Request::post(&url)
                     .header("Content-Type", "application/json")
                     .body(serde_json::to_string(&payload).unwrap())

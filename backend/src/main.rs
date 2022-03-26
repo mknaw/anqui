@@ -6,7 +6,7 @@ extern crate diesel;
 
 use self::diesel::prelude::*;
 use actix_cors::Cors;
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{delete, get, post, web, App, HttpResponse, HttpServer, Responder};
 use backend::models::*;
 use backend::*;
 use dotenv::dotenv;
@@ -27,6 +27,19 @@ async fn read_decks() -> impl Responder {
     HttpResponse::Ok().json(results)
 }
 
+#[delete("/decks/{id}/")]
+async fn delete_deck(path: web::Path<(i32,)>) -> impl Responder {
+    use backend::schema::decks::dsl::*;
+
+    let conn = establish_connection();
+    diesel::delete(decks.filter(id.eq(path.into_inner().0)))
+        .execute(&conn)
+        .expect("Error deleting deck");
+
+    HttpResponse::Ok()
+}
+
+// TODO could really interpret all POSTs (or PUTs maybe) as "new" instead of having URL
 #[post("/decks/new/")]
 async fn new_deck(new_deck: web::Json<NewDeck>) -> impl Responder {
     info!("/decks/new/ POST");
@@ -108,6 +121,7 @@ async fn main() -> std::io::Result<()> {
         App::new().wrap(cors)
             .service(read_decks)
             .service(new_deck)
+            .service(delete_deck)
             .service(read_cards)
             .service(new_card)
             .service(post_feedback)

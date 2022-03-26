@@ -15,4 +15,5 @@ CREATE TABLE cards (
   CONSTRAINT fk_deck
     FOREIGN KEY(deck_id) 
       REFERENCES decks(id)
+      ON DELETE CASCADE
 );
