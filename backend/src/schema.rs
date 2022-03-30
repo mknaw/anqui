@@ -18,9 +18,23 @@ table! {
     }
 }
 
+table! {
+    sessions (id) {
+        id -> Int4,
+        user_id -> Int4,
+        token -> Text,
+        created -> Timestamp,
+    }
+}
+
+table! {
+    users (id) {
+        id -> Int4,
+        username -> Text,
+        password -> Text,
+    }
+}
+
 joinable!(cards -> decks (deck_id));
 
-allow_tables_to_appear_in_same_query!(
-    cards,
-    decks,
-);
+allow_tables_to_appear_in_same_query!(cards, decks, sessions, users,);

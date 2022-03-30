@@ -116,21 +116,24 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
     {
         let card_queue = card_queue.clone();
         let id = id.clone();
-        use_effect_with_deps(move |_| {
-            let card_queue = card_queue.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                let url = format!("/api/decks/{}/cards/", id);
-                let fetched_cards: Vec<Card> = Request::get(&url)
-                    .send()
-                    .await
-                    .unwrap()
-                    .json()
-                    .await
-                    .unwrap();
-                card_queue.set(fetched_cards);
-            });
-            || ()
-        }, ());
+        use_effect_with_deps(
+            move |_| {
+                let card_queue = card_queue.clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    let url = format!("/api/decks/{}/cards/", id);
+                    let fetched_cards: Vec<Card> = Request::get(&url)
+                        .send()
+                        .await
+                        .unwrap()
+                        .json()
+                        .await
+                        .unwrap();
+                    card_queue.set(fetched_cards);
+                });
+                || ()
+            },
+            (),
+        );
     }
 
     let on_card_click = {

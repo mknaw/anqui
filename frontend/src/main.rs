@@ -1,9 +1,10 @@
-use crate::routes::{Route, switch};
+use crate::routes::{switch, Route};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 mod cards;
 mod decks;
+mod login;
 mod routes;
 
 #[function_component(Main)]

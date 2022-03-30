@@ -53,7 +53,7 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
         })
     };
     let class = if *hidden { "hidden" } else { "" };
-    html!{
+    html! {
         <tr key={ deck.id } { class }>
             <td class={ "emoji" }>
                 <Link<Route> to={ Route::DeckDetail { id: deck.id } }>
@@ -96,13 +96,13 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
                 if name.is_empty() {
                     // TODO some sort of warning? maybe not needed
                     log::info!("its empty");
-                    return
+                    return;
                 }
                 wasm_bindgen_futures::spawn_local(async move {
                     let url = "/api/decks/new/";
                     let new_deck: Deck = Request::post(url)
                         .header("Content-Type", "application/json")
-                        .body(serde_json::to_string(&json!({"name": name})).unwrap())
+                        .body(serde_json::to_string(&json!({ "name": name })).unwrap())
                         .send()
                         .await
                         .unwrap()
@@ -140,21 +140,24 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
     {
         let cards = cards.clone();
         let id = id.clone();
-        use_effect_with_deps(move |_| {
-            let cards = cards.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                let url = format!("/api/decks/{}/cards/", id);
-                let fetched_cards: Vec<Card> = Request::get(&url)
-                    .send()
-                    .await
-                    .unwrap()
-                    .json()
-                    .await
-                    .unwrap();
-                cards.set(fetched_cards);
-            });
-            || ()
-        }, ());
+        use_effect_with_deps(
+            move |_| {
+                let cards = cards.clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    let url = format!("/api/decks/{}/cards/", id);
+                    let fetched_cards: Vec<Card> = Request::get(&url)
+                        .send()
+                        .await
+                        .unwrap()
+                        .json()
+                        .await
+                        .unwrap();
+                    cards.set(fetched_cards);
+                });
+                || ()
+            },
+            (),
+        );
     }
 
     let on_add_click = {
@@ -174,7 +177,7 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
             let cards = cards.clone();
             if front.is_empty() || back.is_empty() {
                 // TODO some sort of warning? maybe not needed
-                return
+                return;
             }
             wasm_bindgen_futures::spawn_local(async move {
                 let url = format!("/api/decks/{}/cards/new/", id);
@@ -226,20 +229,23 @@ pub fn deck_home() -> Html {
     let decks = use_state(|| vec![]);
     {
         let decks = decks.clone();
-        use_effect_with_deps(move |_| {
-            let decks = decks.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                let fetched_decks: Vec<Deck> = Request::get("/api/decks/")
-                    .send()
-                    .await
-                    .unwrap()
-                    .json()
-                    .await
-                    .unwrap();
-                decks.set(fetched_decks);
-            });
-            || ()
-        }, ());
+        use_effect_with_deps(
+            move |_| {
+                let decks = decks.clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    let fetched_decks: Vec<Deck> = Request::get("/api/decks/")
+                        .send()
+                        .await
+                        .unwrap()
+                        .json()
+                        .await
+                        .unwrap();
+                    decks.set(fetched_decks);
+                });
+                || ()
+            },
+            (),
+        );
     }
 
     let push_deck = {
