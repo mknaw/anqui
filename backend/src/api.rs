@@ -15,6 +15,26 @@ async fn read_decks(_auth: Authenticated, pool: web::Data<DbPool>) -> impl Respo
     HttpResponse::Ok().json(results)
 }
 
+#[post("/")]
+async fn new_deck(
+    auth: Authenticated,
+    pool: web::Data<DbPool>,
+    // TODO at the moment this `NewDeck` struct is a little contrived
+    new_deck: web::Json<NewDeck>,
+) -> impl Responder {
+    use super::schema::decks::dsl::*;
+
+    let conn = pool.get().unwrap();
+    let deck = diesel::insert_into(decks)
+        .values((
+            name.eq(&new_deck.name),
+            user_id.eq(auth.get_user(&conn).id)
+        ))
+        .get_result::<Deck>(&conn)
+        .unwrap();
+    HttpResponse::Ok().json(deck)
+}
+
 #[delete("{id}/")]
 async fn delete_deck(
     _auth: Authenticated,
@@ -29,18 +49,6 @@ async fn delete_deck(
         .expect("Error deleting deck");
 
     HttpResponse::Ok()
-}
-
-// TODO could really interpret all POSTs (or PUTs maybe) as "new" instead of having URL
-#[post("new/")]
-async fn new_deck(
-    _auth: Authenticated,
-    pool: web::Data<DbPool>,
-    new_deck: web::Json<NewDeck>,
-) -> impl Responder {
-    let conn = pool.get().unwrap();
-    let deck = Deck::create(&conn, new_deck.into_inner());
-    HttpResponse::Ok().json(deck)
 }
 
 #[get("{id}/cards/")]
@@ -67,7 +75,7 @@ struct NewWebCard {
     back: String,
 }
 
-#[post("/{id}/cards/new/")]
+#[post("/{id}/cards/")]
 async fn new_card(
     _auth: Authenticated,
     pool: web::Data<DbPool>,
@@ -97,38 +105,36 @@ async fn post_feedback(
 
     let conn = pool.get().unwrap();
     let card_id = path.into_inner().0;
-    let card = cards.filter(id.eq(card_id)).first::<Card>(&conn).unwrap();
-
-    // TODO would be good I guess to have a less janky way to do this,
-    // although I guess it is not the end of the world.
-    let changes = PostFeedback {
-        fail_count: if feedback == "fail" {
-            Some(card.fail_count + 1)
-        } else {
-            None
-        },
-        hard_count: if feedback == "hard" {
-            Some(card.hard_count + 1)
-        } else {
-            None
-        },
-        good_count: if feedback == "good" {
-            Some(card.good_count + 1)
-        } else {
-            None
-        },
-        easy_count: if feedback == "easy" {
-            Some(card.easy_count + 1)
-        } else {
-            None
-        },
-    };
-
-    diesel::update(cards)
-        .filter(id.eq(card.id))
-        .set(&changes)
-        .load::<Card>(&conn)
-        .unwrap();
+    // TODO only need to select `revision_weight` really
+    let mut card = cards.filter(id.eq(card_id)).first::<Card>(&conn).unwrap();
+    card.add_feedback(&conn, &feedback);
 
     HttpResponse::Ok().body("ok")
+}
+
+#[get("{id}/revision/")]
+async fn get_revision_cards(
+    _auth: Authenticated,
+    pool: web::Data<DbPool>,
+    path: web::Path<(i32,)>,
+) -> impl Responder {
+    use super::schema::cards::dsl::*;
+
+    let conn = pool.get().unwrap();
+    let ids = cards
+        .filter(deck_id.eq(path.into_inner().0))
+        .order_by(diesel::dsl::sql::<i32>("random() ^ revision_weight"))
+        // TODO would be nice to take this from a user preference.
+        .select(id)
+        .limit(25)
+        .load::<i32>(&conn)
+        .expect("Error loading cards");
+
+    let results = cards
+        .filter(id.eq_any(ids))
+        .order_by(diesel::dsl::sql::<i32>("random()"))
+        .load::<Card>(&conn)
+        .expect("Error loading cards");
+
+    HttpResponse::Ok().json(results)
 }

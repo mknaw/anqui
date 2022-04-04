@@ -4,6 +4,7 @@ use chrono::Duration;
 use chrono::prelude::*;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
+use std::cmp::{max, min};
 
 #[derive(Identifiable, Queryable)]
 #[table_name = "users"]
@@ -68,8 +69,9 @@ impl Session {
 #[derive(Identifiable, Queryable, Serialize)]
 #[table_name = "decks"]
 pub struct Deck {
-    pub id: i32,
-    pub name: String,
+    id: i32,
+    name: String,
+    user_id: i32,
 }
 
 impl Deck {
@@ -91,14 +93,11 @@ pub struct NewDeck {
 #[belongs_to(Deck)]
 #[table_name = "cards"]
 pub struct Card {
-    pub id: i32,
-    pub deck_id: i32,
-    pub front: String,
-    pub back: String,
-    pub fail_count: i16,
-    pub hard_count: i16,
-    pub good_count: i16,
-    pub easy_count: i16,
+    id: i32,
+    deck_id: i32,
+    front: String,
+    back: String,
+    revision_weight: i16,
 }
 
 #[derive(Deserialize, Insertable, Serialize)]
@@ -109,21 +108,43 @@ pub struct NewCard {
     pub deck_id: i32,
 }
 
-#[derive(AsChangeset)]
-#[table_name = "cards"]
-pub struct PostFeedback {
-    pub fail_count: Option<i16>,
-    pub hard_count: Option<i16>,
-    pub good_count: Option<i16>,
-    pub easy_count: Option<i16>,
-}
-
 impl Card {
     pub fn create(conn: &PgConnection, new_card: NewCard) -> Card {
         diesel::insert_into(cards::table)
             .values(&new_card)
             .get_result(conn)
             .expect("Error saving new card")
+    }
+
+
+    pub fn add_feedback(&mut self, conn: &PgConnection, feedback: &str) -> () {
+        // Take user's difficulty rating and change card weight accordingly.
+        use super::schema::cards::dsl::*;
+
+        let mut weight = self.revision_weight;
+        match feedback {
+            "fail" => {
+                weight = weight * 4;
+            },
+            "hard" => {
+                weight = weight * 2;
+            },
+            "good" => {
+                weight = weight / 2;
+            }
+            "easy" => {
+                weight = weight / 4;
+            }
+            _ => {},
+        };
+        weight = max(weight, 1);
+        weight = min(weight, 32767);  // SMALLINT upper bound.
+        self.revision_weight = weight;
+        diesel::update(cards)
+            .filter(id.eq(self.id))
+            .set(revision_weight.eq(weight))
+            .load::<Card>(conn)
+            .unwrap();
     }
 }
 

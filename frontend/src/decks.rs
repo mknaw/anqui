@@ -99,8 +99,7 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
                     return;
                 }
                 wasm_bindgen_futures::spawn_local(async move {
-                    let url = "/api/decks/new/";
-                    let new_deck: Deck = Request::post(url)
+                    let new_deck: Deck = Request::post("/api/decks/")
                         .header("Content-Type", "application/json")
                         .body(serde_json::to_string(&json!({ "name": name })).unwrap())
                         .send()
@@ -180,7 +179,7 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
                 return;
             }
             wasm_bindgen_futures::spawn_local(async move {
-                let url = format!("/api/decks/{}/cards/new/", id);
+                let url = format!("/api/decks/{}/cards/", id);
                 let payload = json!({ "front": front, "back": back });
                 let card: Card = Request::post(&url)
                     .header("Content-Type", "application/json")
