@@ -1,7 +1,7 @@
 use super::schema::*;
 use super::*;
-use chrono::Duration;
 use chrono::prelude::*;
+use chrono::Duration;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
 use std::cmp::{max, min};
@@ -116,7 +116,6 @@ impl Card {
             .expect("Error saving new card")
     }
 
-
     pub fn add_feedback(&mut self, conn: &PgConnection, feedback: &str) -> () {
         // Take user's difficulty rating and change card weight accordingly.
         use super::schema::cards::dsl::*;
@@ -125,20 +124,20 @@ impl Card {
         match feedback {
             "fail" => {
                 weight = weight * 4;
-            },
+            }
             "hard" => {
                 weight = weight * 2;
-            },
+            }
             "good" => {
                 weight = weight / 2;
             }
             "easy" => {
                 weight = weight / 4;
             }
-            _ => {},
+            _ => {}
         };
         weight = max(weight, 1);
-        weight = min(weight, 32767);  // SMALLINT upper bound.
+        weight = min(weight, 32767); // SMALLINT upper bound.
         self.revision_weight = weight;
         diesel::update(cards)
             .filter(id.eq(self.id))
@@ -152,7 +151,9 @@ impl User {
     pub fn new_session(&self, conn: &PgConnection) -> Session {
         use super::schema::sessions::dsl::*;
 
-        diesel::delete(sessions.filter(user_id.eq(self.id))).execute(conn).unwrap();
+        diesel::delete(sessions.filter(user_id.eq(self.id)))
+            .execute(conn)
+            .unwrap();
         Session::create(conn, &self)
     }
 }

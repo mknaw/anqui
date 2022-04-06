@@ -1,6 +1,8 @@
+use crate::Route;
 use reqwasm::http::Request;
 use serde::Deserialize;
 use yew::prelude::*;
+use yew_router::prelude::*;
 
 #[derive(Clone, PartialEq, Deserialize)]
 pub struct Card {
@@ -110,7 +112,7 @@ pub struct RevisionProps {
 
 #[function_component(Revision)]
 pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
-    let card_queue = use_state(|| vec![]);
+    let card_queue: UseStateHandle<Option<Vec<Card>>> = use_state(|| None);
     let front_shown = use_state(|| true);
 
     {
@@ -128,7 +130,7 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
                         .json()
                         .await
                         .unwrap();
-                    card_queue.set(fetched_cards);
+                    card_queue.set(Some(fetched_cards));
                 });
                 || ()
             },
@@ -141,60 +143,67 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
         Callback::from(move |_| front_shown.set(false))
     };
 
-    let on_feedback_click = {
-        let card_queue = card_queue.clone();
-        let cards = (*card_queue).clone();
-        let front_shown = front_shown.clone();
-        Callback::from(move |feedback: Feedback| {
-            let mut cards = cards.clone();
-            let front_shown_val = !*front_shown;
-            front_shown.set(front_shown_val);
-            if !front_shown_val {
-                return;
-            }
-            let popped = cards.pop();
-            card_queue.set(cards);
+    let on_feedback_click = match &*card_queue {
+        Some(cards) => {
+            let card_queue = card_queue.clone();
+            let cards = cards.clone();
+            let front_shown = front_shown.clone();
+            Callback::from(move |feedback: Feedback| {
+                let mut cards = cards.clone();
+                let front_shown_val = !*front_shown;
+                front_shown.set(front_shown_val);
+                if !front_shown_val {
+                    return;
+                }
+                let popped = cards.pop();
+                card_queue.set(Some(cards));
 
-            popped.map(|card: Card| {
-                wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!("/api/cards/{}/feedback/", card.id);
-                    Request::post(url.as_str())
-                        .body(label_feedback(&feedback))
-                        .send()
-                        .await
-                        .unwrap();
+                popped.map(|card: Card| {
+                    wasm_bindgen_futures::spawn_local(async move {
+                        let url = format!("/api/cards/{}/feedback/", card.id);
+                        Request::post(url.as_str())
+                            .body(label_feedback(&feedback))
+                            .send()
+                            .await
+                            .unwrap();
+                    });
                 });
-            });
-        })
+            })
+        }
+        None => Callback::from(|_| return),
     };
 
     html! {
         <div id={ "revision" }>
             {
-                match (*card_queue).last() {
-                    Some(c) => html! {
-                        <>
-                            <CardDisplay
-                                card={ c.clone() }
-                                front_shown={ *front_shown.clone() }
-                                onclick={ on_card_click.clone() }
-                            />
-                            {
-                                if !(*front_shown) {
-                                    html! {
-                                        <FeedbackBar
-                                            onclick={ on_feedback_click.clone() }
-                                        />
+                if let Some(card_queue) = (*card_queue).clone() {
+                    match (*card_queue).last() {
+                        Some(c) => html! {
+                            <>
+                                <CardDisplay
+                                    card={ c.clone() }
+                                    front_shown={ *front_shown.clone() }
+                                    onclick={ on_card_click.clone() }
+                                />
+                                {
+                                    if !(*front_shown) {
+                                        html! {
+                                            <FeedbackBar
+                                                onclick={ on_feedback_click.clone() }
+                                            />
+                                        }
+                                    } else {
+                                        html! {}
                                     }
-                                } else {
-                                    html! {}
                                 }
-                            }
-                        </>
-                    },
-                    None => html!{
-                        <div>{ "TODO redirect" }</div>
-                    },
+                            </>
+                        },
+                        None => html!{
+                            <Redirect<Route> to={Route::DeckDetail { id: id.clone() }}/>
+                        },
+                    }
+                } else {
+                    html! {}
                 }
             }
         </div>

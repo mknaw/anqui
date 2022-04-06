@@ -43,6 +43,7 @@ async fn main() -> std::io::Result<()> {
                     .service(
                         web::scope("/decks")
                             .service(read_decks)
+                            .service(read_deck)
                             .service(new_deck)
                             .service(delete_deck)
                             .service(read_cards)

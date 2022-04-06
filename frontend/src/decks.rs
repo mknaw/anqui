@@ -116,12 +116,12 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
     };
 
     html! {
-        <>
-            <input ref={ input_node_ref } />
+        <div class="input-and-button-container">
             <button onclick={ on_add_click }>
-                { "add" }
+                { "✏️" }
             </button>
-        </>
+            <input ref={ input_node_ref } />
+        </div>
     }
 }
 
@@ -159,12 +159,43 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
         );
     }
 
+    // TODO this stuff is too verbose, must figure out a way to split out to a helper.
+    let deck = use_state(|| None);
+    {
+        let deck = deck.clone();
+        let id = id.clone();
+        use_effect_with_deps(
+            move |_| {
+                let deck = deck.clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    let url = format!("/api/decks/{}/", id);
+                    let fetched_deck: Deck = Request::get(&url)
+                        .send()
+                        .await
+                        .unwrap()
+                        .json()
+                        .await
+                        .unwrap();
+                    deck.set(Some(fetched_deck));
+                });
+                || ()
+            },
+            (),
+        );
+    }
+
+    let history = use_history().unwrap();
+    let on_revise_click = {
+        let id = id.clone();
+        let history = history.clone();
+        Callback::from(move |_| history.push(Route::Revision { id }))
+    };
+
     let on_add_click = {
         let id = id.clone();
         let front_node_ref = front_node_ref.clone();
         let back_node_ref = back_node_ref.clone();
         let cards = cards.clone();
-        // let push_deck = push_deck.clone();
 
         Callback::from(move |_| {
             let id = id.clone();
@@ -201,23 +232,38 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
 
     html! {
         <>
-            <h1>{ "TODO deck.name" }</h1>
             {
-                (*cards).clone().into_iter().map(|card| {
+                if let Some(deck) = (*deck).clone() {
                     html! {
-                        <div>
-                            <div>{ card.front }</div>
-                            <div>{ card.back }</div>
-                        </div>
+                        <h1>
+                            <span onclick={ on_revise_click.clone() }>{ "🛎️ " }</span>
+                            <span>{ deck.name }</span>
+                        </h1>
                     }
-                }).collect::<Html>()
+                } else {
+                    html! {}
+                }
             }
-            <div>
-                <input ref={ front_node_ref } />
-                <input ref={ back_node_ref } />
+            <table>
+                {
+                    (*cards).clone().into_iter().map(|card| {
+                        html! {
+                            <tr>
+                                <td>{ card.front }</td>
+                                <td class="card-back">{ card.back }</td>
+                            </tr>
+                        }
+                    }).collect::<Html>()
+                }
+            </table>
+            <div class="input-and-button-container">
                 <button onclick={ on_add_click }>
-                    { "add" }
+                    { "✏️" }
                 </button>
+                <div>
+                    <input ref={ front_node_ref } placeholder="de face" />
+                    <input ref={ back_node_ref } placeholder="arrière" />
+                </div>
             </div>
         </>
     }

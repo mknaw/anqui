@@ -26,10 +26,7 @@ async fn new_deck(
 
     let conn = pool.get().unwrap();
     let deck = diesel::insert_into(decks)
-        .values((
-            name.eq(&new_deck.name),
-            user_id.eq(auth.get_user(&conn).id)
-        ))
+        .values((name.eq(&new_deck.name), user_id.eq(auth.get_user(&conn).id)))
         .get_result::<Deck>(&conn)
         .unwrap();
     HttpResponse::Ok().json(deck)
@@ -49,6 +46,23 @@ async fn delete_deck(
         .expect("Error deleting deck");
 
     HttpResponse::Ok()
+}
+
+#[get("{id}/")]
+async fn read_deck(
+    _auth: Authenticated,
+    pool: web::Data<DbPool>,
+    path: web::Path<(i32,)>,
+) -> impl Responder {
+    use super::schema::decks::dsl::*;
+
+    let conn = pool.get().unwrap();
+    let deck = decks
+        .filter(id.eq(path.into_inner().0))
+        .first::<Deck>(&conn)
+        .expect("Error getting deck");
+
+    HttpResponse::Ok().json(deck)
 }
 
 #[get("{id}/cards/")]
