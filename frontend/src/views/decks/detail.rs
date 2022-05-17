@@ -17,63 +17,12 @@ pub struct DeckDetailProps {
 
 #[function_component(DeckDetail)]
 pub fn deck_detail(DeckDetailProps { deck_id }: &DeckDetailProps) -> Html {
-    let query_params = use_state_eq(CardReadQuery::default);
-
-    let on_search_term_input = {
-        let query_params = query_params.clone();
-        Callback::from(move |e: InputEvent| {
-            let input: HtmlInputElement = e.target_unchecked_into();
-            let mut new_query_params = (*query_params).clone();
-            new_query_params.page = 0;
-            new_query_params.search_term = input.value();
-            query_params.set(new_query_params);
-        })
-    };
-
-    // Fetch list of cards associated with this deck
-    let cards = use_state_eq(std::vec::Vec::new);
-    let has_more = use_mut_ref(|| false);
-    {
-        let cards = cards.clone();
-        let query_params = query_params.clone();
-        let has_more = has_more.clone();
-        let this_page = query_params.page;
-        let deck_id = *deck_id;
-
-        let url = format!(
-            "/api/decks/{}/cards/?{}",
-            deck_id,
-            serde_qs::to_string(&*query_params).unwrap(),
-        );
-        use_effect_with_deps(
-            move |_| {
-                let cards = cards.clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    if let Ok::<api::Page<Card>, _>(page) = api::get(&url).await {
-                        // Would prefer not to have to clone all the old ones to append
-                        // but I increasingly thing that would necessitate something `unsafe`.
-                        if this_page > 0 {
-                            let mut updated_cards = (*cards).clone();
-                            updated_cards.extend(page.results);
-                            cards.set(updated_cards);
-                        } else {
-                            cards.set(page.results);
-                        }
-                        *has_more.borrow_mut() = page.has_more;
-                    }
-                });
-                || ()
-            },
-            query_params, // TODO would be nice to cache by `query_params`.
-        );
-    }
-
     // Fetch info about deck.
+    let deck_id = *deck_id;
     let deck = use_state_eq(|| None);
     let ctx = use_context::<AppContext>().unwrap();
     {
         let deck = deck.clone();
-        let deck_id = *deck_id;
         use_effect_with_deps(
             move |_| {
                 let deck = deck.clone();
@@ -89,6 +38,76 @@ pub fn deck_detail(DeckDetailProps { deck_id }: &DeckDetailProps) -> Html {
             (),
         );
     }
+
+    html! {
+        <>
+            <CardList { deck_id } />
+            {
+                if let Some(deck) = (*deck).clone() {
+                    html! { <DeckDetailToolbar { deck } /> }
+                } else {
+                    html! {}
+                }
+            }
+        </>
+    }
+}
+
+#[derive(PartialEq, Properties)]
+struct CardListProps {
+    deck_id: i32,
+}
+
+#[function_component(CardList)]
+fn card_list(CardListProps { deck_id }: &CardListProps) -> Html {
+    let deck_id = *deck_id;
+    let query_params = use_state_eq(CardReadQuery::default);
+
+    // Fetch list of cards associated with this deck
+    let cards = use_state_eq(|| None);
+    let has_more = use_mut_ref(|| false);
+    {
+        let cards = cards.clone();
+        let query_params = query_params.clone();
+        let has_more = has_more.clone();
+        let this_page = query_params.page;
+
+        let url = format!(
+            "/api/decks/{}/cards/?{}",
+            deck_id,
+            serde_qs::to_string(&*query_params).unwrap(),
+        );
+        use_effect_with_deps(
+            move |_| {
+                let cards = cards.clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    if let Ok::<api::Page<Card>, _>(page) = api::get(&url).await {
+                        if (*cards).is_some() && this_page > 0 {
+                            let mut card_vec: Vec<Card> = (*cards).clone().unwrap();
+                            card_vec.extend(page.results);
+                            cards.set(Some(card_vec));
+                        } else {
+                            cards.set(Some(page.results));
+                        }
+                        *has_more.borrow_mut() = page.has_more;
+                    }
+                });
+                || ()
+            },
+            query_params, // TODO would be nice to cache by `query_params`.
+        );
+    }
+
+    let on_search_term_input = {
+        let query_params = query_params.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            let mut new_query_params = (*query_params).clone();
+            new_query_params.page = 0;
+            new_query_params.search_term = input.value();
+            query_params.set(new_query_params);
+        })
+    };
 
     let onscroll = {
         let query_params = query_params.clone();
@@ -106,34 +125,56 @@ pub fn deck_detail(DeckDetailProps { deck_id }: &DeckDetailProps) -> Html {
         })
     };
 
-    html! {
-        <>
-            <div class={ classes!("w-1/3", "h-[5vh]", "flex", "items-center", "portrait:text-4xl", "text-l") }>
-                <input
-                    class={ classes!("w-full", "text-center") }
-                    type="text"
-                    placeholder={ "Chercher" }
-                    value={ (*query_params).clone().search_term }
-                    oninput={ on_search_term_input }
-                />
-            </div>
-            <div { onscroll } class={ classes!("h-[85vh]", "w-full", "overflow-y-auto", "px-24") }>
-                <div class={ classes!("max-h-[85vh]", "grid", "gap-4", "portrait:grid-cols-3", "grid-cols-4") }>
-                    {
-                        (*cards).clone().into_iter().map(|card| {
-                            html! { <CardSummary deck_id={ *deck_id } card={ card.clone() } /> }
-                        }).collect::<Html>()
-                    }
+    if let Some(cards) = (*cards).clone() {
+        if cards.is_empty() {
+            html! {
+                <div class={ classes!("h-[90vh]", "flex", "items-center", "portrait:text-6xl", "text-3xl") }>
+                    { "Pas encore de cartes!" }
                 </div>
-            </div>
-            {
-                if let Some(deck) = (*deck).clone() {
-                    html! { <DeckDetailToolbar { deck } /> }
-                } else {
-                    html! {}
-                }
             }
-        </>
+        } else {
+            html! {
+                <>
+                    <div
+                        class={
+                            classes!(
+                                "w-1/3", "h-[5vh]", "flex", "items-center",
+                                "portrait:text-4xl", "text-l",
+                            )
+                        }
+                    >
+                        <input
+                            class={ classes!("w-full", "text-center") }
+                            type="text"
+                            placeholder={ "Chercher" }
+                            value={ (*query_params).clone().search_term }
+                            oninput={ on_search_term_input }
+                        />
+                    </div>
+                    <div
+                        { onscroll }
+                        class={ classes!("h-[85vh]", "w-full", "overflow-y-auto", "px-24") }
+                    >
+                        <div
+                            class={
+                                classes!(
+                                    "max-h-[85vh]", "grid", "gap-4",
+                                    "portrait:grid-cols-3", "grid-cols-4",
+                                )
+                            }
+                        >
+                            {
+                                cards.into_iter().map(|card| {
+                                    html! { <CardSummary { deck_id } card={ card.clone() } /> }
+                                }).collect::<Html>()
+                            }
+                        </div>
+                    </div>
+                </>
+            }
+        }
+    } else {
+        html! {}
     }
 }
 
