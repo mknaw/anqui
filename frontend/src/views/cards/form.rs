@@ -24,8 +24,8 @@ pub fn card_form(CardFormProps { deck_id, card_id }: &CardFormProps) -> Html {
     let history = use_history().unwrap();
     // TODO if accessing from the view in which we already got all the cards as a list,
     // should just be able to pass that serialized data `Option`ally.
-    let front = use_state(|| "".to_string());
-    let back = use_state(|| "".to_string());
+    let front = use_state(String::new);
+    let back = use_state(String::new);
     if card_id.is_some() {
         let front = front.clone();
         let back = back.clone();

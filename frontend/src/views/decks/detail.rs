@@ -1,6 +1,7 @@
 use common::models::{Card, Deck};
+use common::query_params::CardReadQuery;
 use wasm_bindgen::JsCast;
-use web_sys::Element;
+use web_sys::{Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -16,42 +17,59 @@ pub struct DeckDetailProps {
 
 #[function_component(DeckDetail)]
 pub fn deck_detail(DeckDetailProps { deck_id }: &DeckDetailProps) -> Html {
-    let page_number = use_state(|| 0);
+    let query_params = use_state_eq(CardReadQuery::default);
+
+    let on_search_term_input = {
+        let query_params = query_params.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            let mut new_query_params = (*query_params).clone();
+            new_query_params.page = 0;
+            new_query_params.search_term = input.value();
+            query_params.set(new_query_params);
+        })
+    };
 
     // Fetch list of cards associated with this deck
-    let cards = use_state(std::vec::Vec::new);
-    let has_more = use_state(|| false);
+    let cards = use_state_eq(std::vec::Vec::new);
+    let has_more = use_mut_ref(|| false);
     {
         let cards = cards.clone();
+        let query_params = query_params.clone();
         let has_more = has_more.clone();
-        let this_page_number = *page_number;
-        let page_number = page_number.clone();
+        let this_page = query_params.page;
         let deck_id = *deck_id;
+
+        let url = format!(
+            "/api/decks/{}/cards/?{}",
+            deck_id,
+            serde_qs::to_string(&*query_params).unwrap(),
+        );
         use_effect_with_deps(
             move |_| {
                 let cards = cards.clone();
                 wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!(
-                        "/api/decks/{}/cards/?page={}&per_page={}",
-                        deck_id, this_page_number, 36
-                    );
                     if let Ok::<api::Page<Card>, _>(page) = api::get(&url).await {
                         // Would prefer not to have to clone all the old ones to append
                         // but I increasingly thing that would necessitate something `unsafe`.
-                        let mut updated_cards = (*cards).clone();
-                        updated_cards.extend(page.results);
-                        cards.set(updated_cards);
-                        has_more.set(page.has_more);
+                        if this_page > 0 {
+                            let mut updated_cards = (*cards).clone();
+                            updated_cards.extend(page.results);
+                            cards.set(updated_cards);
+                        } else {
+                            cards.set(page.results);
+                        }
+                        *has_more.borrow_mut() = page.has_more;
                     }
                 });
                 || ()
             },
-            page_number,
+            query_params, // TODO would be nice to cache by `query_params`.
         );
     }
 
     // Fetch info about deck.
-    let deck = use_state(|| None);
+    let deck = use_state_eq(|| None);
     let ctx = use_context::<AppContext>().unwrap();
     {
         let deck = deck.clone();
@@ -73,24 +91,34 @@ pub fn deck_detail(DeckDetailProps { deck_id }: &DeckDetailProps) -> Html {
     }
 
     let onscroll = {
-        let old_page_number = *page_number;
-        let has_more = *has_more;
+        let query_params = query_params.clone();
         Callback::from(move |e: Event| {
-            if !has_more {
+            if !*has_more.borrow_mut() {
                 return;
             }
             let el = e.target().unwrap().unchecked_into::<Element>();
             // TODO adding 5 arbitrarily still seems kind of flimsy.
             if el.scroll_top() + el.client_height() + 5 >= el.scroll_height() {
-                page_number.set(old_page_number + 1);
+                let mut new_query_params = (*query_params).clone();
+                new_query_params.page += 1;
+                query_params.set(new_query_params);
             };
         })
     };
 
     html! {
         <>
-            <div { onscroll } class={ classes!("h-[90vh]", "w-full", "overflow-y-auto", "px-24") }>
-                <div class={ classes!("max-h-[90vh]", "grid", "gap-4", "portrait:grid-cols-3", "grid-cols-4") }>
+            <div class={ classes!("w-1/3", "h-[5vh]", "flex", "items-center", "portrait:text-4xl", "text-l") }>
+                <input
+                    class={ classes!("w-full", "text-center") }
+                    type="text"
+                    placeholder={ "Chercher" }
+                    value={ (*query_params).clone().search_term }
+                    oninput={ on_search_term_input }
+                />
+            </div>
+            <div { onscroll } class={ classes!("h-[85vh]", "w-full", "overflow-y-auto", "px-24") }>
+                <div class={ classes!("max-h-[85vh]", "grid", "gap-4", "portrait:grid-cols-3", "grid-cols-4") }>
                     {
                         (*cards).clone().into_iter().map(|card| {
                             html! { <CardSummary deck_id={ *deck_id } card={ card.clone() } /> }
@@ -137,7 +165,7 @@ fn deck_detail_toolbar(DeckDetailToolbarProps { deck }: &DeckDetailToolbarProps)
                 classes!(
                     "sticky", "bottom-0", "h-[5vh]", "w-1/3", "z-10",
                     "flex", "justify-between", "items-center",
-                    "portrait:text-6xl", "lg:text-3xl",
+                    "portrait:text-6xl", "text-3xl",
                 )
             }
         >
@@ -180,7 +208,7 @@ fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
                     )
                 }
             >
-                // TODO have to figure out some dynamic way to truncate / clip
+                // TODO figure out some dynamic way to truncate / clip?
                 { content }
             </span>
         }

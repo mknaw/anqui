@@ -550,8 +550,8 @@ Ensure the default browser behavior of the `hidden` attribute.
   height: 16rem;
 }
 
-.h-\[90vh\] {
-  height: 90vh;
+.h-\[85vh\] {
+  height: 85vh;
 }
 
 .h-32 {
@@ -566,8 +566,8 @@ Ensure the default browser behavior of the `hidden` attribute.
   max-height: 100vh;
 }
 
-.max-h-\[90vh\] {
-  max-height: 90vh;
+.max-h-\[85vh\] {
+  max-height: 85vh;
 }
 
 .w-full {

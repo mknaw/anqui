@@ -1,5 +1,6 @@
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use common::models::{Card, Deck};
+use common::query_params::CardReadQuery;
 use diesel::dsl::{exists, select, sql, sql_query};
 use diesel::prelude::*;
 use serde::Deserialize;
@@ -7,19 +8,6 @@ use serde::Deserialize;
 use crate::auth::Authenticated;
 use crate::db::*;
 use crate::revision::*;
-
-#[derive(Deserialize)]
-struct PageQuery {
-    #[serde(default)]
-    page: i64,
-    #[serde(default = "default_per_page")]
-    per_page: i64,
-}
-
-fn default_per_page() -> i64 {
-    // TODO should come from some (variable) constant?
-    20
-}
 
 #[get("/")]
 async fn read_decks(auth: Authenticated, pool: web::Data<DbPool>) -> impl Responder {
@@ -101,16 +89,23 @@ async fn read_cards(
     auth: Authenticated,
     pool: web::Data<DbPool>,
     path: web::Path<(i32,)>,
-    query: web::Query<PageQuery>,
+    query: web::Query<CardReadQuery>,
 ) -> impl Responder {
     use common::schema::{cards, decks};
 
     let (deck_id,) = path.into_inner();
     let conn = pool.get().unwrap();
     let user_id = auth.get_user(&conn).id;
+    let search_term = format!("%{}%", query.search_term);
+
     let page: Page<Card> = cards::table
         .inner_join(decks::table)
         .filter(cards::deck_id.eq(deck_id))
+        .filter(
+            cards::front
+                .ilike(&search_term)
+                .or(cards::back.ilike(&search_term)),
+        )
         .filter(decks::user_id.eq(user_id))
         .select(cards::table::all_columns())
         .paginate(query.page, query.per_page)
