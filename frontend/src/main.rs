@@ -6,6 +6,7 @@ use crate::routes::*;
 mod api;
 mod cards;
 mod decks;
+mod emojis;
 mod login;
 mod routes;
 
@@ -25,19 +26,25 @@ pub fn layout(LayoutProps { children }: &LayoutProps) -> Html {
                 )
             }
         >
-            <nav class={ classes!("absolute",  "right-0", "text-3xl", "flex", "justify-end", "p-5") }>
+            <nav
+                class={
+                    classes!(
+                        "absolute",  "right-0", "text-6xl", "lg:text-3xl", "flex", "justify-end", "p-5"
+                    )
+                }
+        >
                 <span class={ classes!("px-2") }>
-                    <Link<AppRoute> to={ AppRoute::Decks }>{ "🏡" }</Link<AppRoute>>
+                    <Link<AppRoute> to={ AppRoute::Decks }>{ emojis::HOME }</Link<AppRoute>>
                 </span>
                 <span class={ classes!("px-2") }>
                     <a href={ "/logout/" }>
-                        { "👋" }
+                        { emojis::WAVE }
                     </a>
                 </span>
             </nav>
             <div
                 id={ "content" }
-                class={ classes!("container", "mx-auto", "flex", "flex-col", "justify-center", "h-full") }
+                class={ classes!("flex", "flex-col", "justify-center", "h-full", "w-full", "items-center") }
             >
                 { for children.iter() }
             </div>

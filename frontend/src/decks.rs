@@ -6,6 +6,7 @@ use yew_router::prelude::*;
 
 use crate::api::{delete, get, post, Page};
 use crate::cards::Card;
+use crate::emojis;
 use crate::routes::AppRoute;
 
 #[derive(Clone, PartialEq, Deserialize)]
@@ -22,7 +23,7 @@ pub struct DeckListProps {
 #[function_component(DeckList)]
 pub fn decks(DeckListProps { decks }: &DeckListProps) -> Html {
     html! {
-        <div class={ classes!("text-3xl") }>
+        <div class={ classes!("text-6xl", "lg:text-3xl") }>
             {
                 (*decks).clone().into_iter().map(|deck| {
                     html!{ <DeckListRow { deck } /> }
@@ -58,12 +59,12 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
         <div key={ deck.id } class={ classes!("py-2", hidden_class) }>
             <span class={ classes!("px-2") }>
                 <span onclick={ delete_deck }>
-                    { "🪓" }
+                    { emojis::AXE }
                 </span>
             </span>
             <span class={ classes!("px-2") }>
                 <Link<AppRoute> to={ AppRoute::Revision { id: deck.id } }>
-                    { "🛎️" }
+                    { emojis::BELL }
                 </Link<AppRoute>>
             </span>
             <span class={ classes!("px-2") }>
@@ -110,9 +111,9 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
     };
 
     html! {
-        <div class={ classes!("text-3xl", "flex", "w-full", "py-3") }>
+        <div class={ classes!("text-3xl", "portrait:text-6xl", "flex", "w-full", "py-3") }>
             <button onclick={ on_add_click } class={ classes!("px-2") }>
-                { "✏️" }
+                { emojis::PENCIL }
             </button>
             <input
                 ref={ input_node_ref }
@@ -130,9 +131,6 @@ pub struct DeckDetailProps {
 
 #[function_component(DeckDetail)]
 pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
-    let front_node_ref = use_node_ref();
-    let back_node_ref = use_node_ref();
-
     let page_number = use_state(|| 0);
 
     let cards = use_state(std::vec::Vec::new);
@@ -147,7 +145,10 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
             move |_| {
                 let cards = cards.clone();
                 wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!("/api/decks/{}/cards/?page={}", id, this_page_number);
+                    let url = format!(
+                        "/api/decks/{}/cards/?page={}&per_page={}",
+                        id, this_page_number, 24
+                    );
                     if let Ok::<Page<Card>, _>(page) = get(&url).await {
                         cards.set(page.results);
                         has_more.set(page.has_more);
@@ -194,77 +195,35 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
         })
     };
 
-    let history = use_history().unwrap();
-    let on_revise_click = {
-        let id = *id;
-        let history = history;
-        Callback::from(move |_| history.push(AppRoute::Revision { id }))
-    };
-
-    let on_add_click = {
-        let id = *id;
-        let front_node_ref = front_node_ref.clone();
-        let back_node_ref = back_node_ref.clone();
-        let cards = cards.clone();
-
-        Callback::from(move |_| {
-            let id = id;
-            let front_input = front_node_ref.cast::<HtmlInputElement>().unwrap();
-            let back_input = back_node_ref.cast::<HtmlInputElement>().unwrap();
-            let front = front_input.value();
-            let back = back_input.value();
-            let cards = cards.clone();
-            if front.is_empty() || back.is_empty() {
-                // TODO some sort of warning? maybe not needed
-                return;
-            }
-            wasm_bindgen_futures::spawn_local(async move {
-                let url = format!("/api/decks/{}/cards/", id);
-                let payload = json!({ "front": front, "back": back });
-                if let Ok::<Card, _>(card) = post(&url, payload).await {
-                    front_input.set_value("");
-                    back_input.set_value("");
-                    let mut card_vec = (*cards).clone();
-                    card_vec.push(card);
-                    cards.set(card_vec);
-                }
-            });
-        })
-    };
-
     html! {
         <>
             {
                 if let Some(deck) = (*deck).clone() {
-                    html! {
-                        <h1 class={ classes!("text-4xl", "text-center", "py-5") }>
-                            <span onclick={ on_revise_click.clone() }>{ "🛎️ " }</span>
-                            <span>{ deck.name }</span>
-                        </h1>
-                    }
+                    html! { <DeckDetailHeader { deck } /> }
                 } else {
                     html! {}
                 }
             }
-            <div class={ classes!("container", "h-full") }>
+            <div class={ classes!("h-full", "w-full") }>
                 <div class={ classes!("flex", "flex-row", "items-center", "justify-center", "h-full") }>
                     <div
                         class={
                             classes!(
-                                "text-3xl", "px-5",
+                                "text-3xl", "portrait:text-6xl", "px-5",
                                 if *page_number > 0 {"visible"} else {"invisible"},
                             )
                         }
                     >
                         <button onclick={ on_previous_click }>
-                            { "⬅️" }
+                            { emojis::BACK }
                         </button>
                     </div>
                     <div
                         class={
                             classes!(
-                                "max-w-4xl", "w-full", "py-4",
-                                "grid", "gap-4", "grid-cols-3", "md:grid-cols-4", "lg:grid-cols-5",
+                                "w-full",
+                                "grid", "gap-4",
+                                "portrait:grid-cols-3", "grid-cols-4", "lg:grid-cols-5"
                             )
                         }
                     >
@@ -279,27 +238,67 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
                     <div
                         class={
                             classes!(
-                                "text-3xl", "px-5",
+                                "text-3xl", "portrait:text-6xl", "px-5",
                                 if *has_more {"visible"} else {"invisible"},
                             )
                         }
                     >
                         <button onclick={ on_next_click }>
-                            { "➡️" }
+                            { emojis::FORWARD }
                         </button>
-                    </div>
-                </div>
-                <div hidden={ true }>
-                    <button onclick={ on_add_click }>
-                        { "✏️" }
-                    </button>
-                    <div>
-                        <input ref={ front_node_ref } placeholder="de face" />
-                        <input ref={ back_node_ref } placeholder="arrière" />
                     </div>
                 </div>
             </div>
         </>
+    }
+}
+
+#[derive(PartialEq, Properties)]
+struct DeckDetailHeaderProps {
+    deck: Deck,
+}
+
+#[function_component(DeckDetailHeader)]
+fn deck_detail_header(DeckDetailHeaderProps { deck }: &DeckDetailHeaderProps) -> Html {
+    let history = use_history().unwrap();
+    let on_revise_click = {
+        let history = history.clone();
+        let deck_id = deck.id.clone();
+        Callback::from(move |_| history.push(AppRoute::Revision { id: deck_id }))
+    };
+
+    let on_create_click = {
+        let history = history;
+        let deck_id = deck.id.clone();
+        Callback::from(move |_| {
+            history.push(AppRoute::CardCreateForm { deck_id });
+        })
+    };
+
+    html! {
+        <h1 class={ classes!("lg:text-4xl", "portrait:text-6xl", "text-center", "py-5") }>
+            <div>{ deck.name.clone() }</div>
+            <div>
+                <button
+                    onclick={ on_revise_click.clone() }
+                    class={ classes!("px-2") }
+                >
+                    { emojis::BELL }
+                </button>
+                <button
+                    onclick={ on_create_click }
+                    class={ classes!("px-2") }
+                >
+                    { emojis::PENCIL }
+                </button>
+                <button
+                    // TODO onclick={ ... }
+                    class={ classes!("px-2") }
+                >
+                    { emojis::GEAR }
+                </button>
+            </div>
+        </h1>
     }
 }
 
@@ -313,8 +312,14 @@ pub struct CardSummaryProps {
 fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
     fn card_content(content: &str) -> Html {
         html! {
-            <span class={ classes!("p-1", "h-full", "overflow-hidden", "flex-col", "justify-center") }>
-                // TODO have to figure out some more dynamic way around this.
+            <span
+                class={
+                    classes!(
+                        "p-1", "h-full",  "w-full", "overflow-hidden", "flex", "items-center", "justify-center"
+                    )
+                }
+            >
+                // TODO have to figure out some dynamic way to truncate / clip
                 { content }
             </span>
         }
@@ -326,7 +331,7 @@ fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
         let card_id = card.id;
         let history = history;
         Callback::from(move |_| {
-            history.push(AppRoute::CardDetail { deck_id, card_id });
+            history.push(AppRoute::CardUpdateForm { deck_id, card_id });
         })
     };
 
@@ -334,15 +339,14 @@ fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
         <div
             class={
                 classes!(
-                    "h-32", "flex", "flex-col", "justify-between", "items-center",
-                    "text-l", "text-center",
+                    "h-32", "portrait:h-52", "flex", "flex-col", "justify-between", "items-center",
+                    "text-l", "portrait:text-4xl", "text-center",
                     "rounded-lg", "border-2", "border-gray-600",
                     "cursor-pointer"
                 )
             }
             { onclick }
             key={ card.id }
-            card_id={ "bar" }
         >
             { card_content(&card.front) }
             <hr class={ classes!("w-full", "border-gray-600", "border", "border-dashed") } />
@@ -381,7 +385,7 @@ pub fn deck_home() -> Html {
     };
 
     html! {
-        <div class={ classes!("container", "max-w-2xl", "h-3/5") }>
+        <div class={ classes!("max-w-2xl", "h-3/5") }>
             <DeckList decks={ (*decks).clone() } />
             <DeckAdd { push_deck } />
         </div>

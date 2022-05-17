@@ -28,8 +28,10 @@ pub enum AppRoute {
     DeckDetail { id: usize },
     #[at("/app/decks/:id/revision/")]
     Revision { id: usize },
+    #[at("/app/decks/:deck_id/cards/")]
+    CardCreateForm { deck_id: usize },
     #[at("/app/decks/:deck_id/cards/:card_id/")]
-    CardDetail { deck_id: usize, card_id: usize },
+    CardUpdateForm { deck_id: usize, card_id: usize },
 }
 
 pub fn main_switch(routes: &MainRoute) -> Html {
@@ -54,8 +56,11 @@ fn app_switch(routes: &AppRoute) -> Html {
     match routes {
         AppRoute::Decks => html! { <DeckHome /> },
         AppRoute::DeckDetail { id } => html! { <DeckDetail id={ *id } /> },
-        AppRoute::CardDetail { deck_id, card_id } => html! {
-            <CardDetail deck_id={ *deck_id } card_id={ *card_id }/>
+        AppRoute::CardCreateForm { deck_id } => html! {
+            <CardForm deck_id={ *deck_id } card_id={ None }/>
+        },
+        AppRoute::CardUpdateForm { deck_id, card_id } => html! {
+            <CardForm deck_id={ *deck_id } card_id={ *card_id }/>
         },
         AppRoute::Revision { id } => html! { <Revision id={ *id }/> },
     }

@@ -59,7 +59,15 @@ pub fn login() -> Html {
     };
 
     html! {
-        <div class={ classes!("text-3xl", "h-screen", "flex", "flex-col", "justify-center", "items-center") }>
+        <div
+            class={
+                classes!(
+                    "h-screen", "flex", "flex-col", "justify-center", "items-center",
+                    "text-7xl",
+                    "lg:text-3xl",
+                )
+            }
+        >
             <form { onsubmit } class={ classes!("mb-32") }>
                 // TODO would be nice if this appeared in a "fixed" place, without offsetting inputs.
                 <div hidden={ (*error).is_empty() } class={ classes!("py-2") }>
