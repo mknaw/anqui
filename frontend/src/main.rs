@@ -17,7 +17,7 @@ pub struct LayoutProps {
 #[function_component(Layout)]
 pub fn layout(LayoutProps { children }: &LayoutProps) -> Html {
     html! {
-        <div class={ classes!("w-full", "h-screen", "flex", "flex-col") }>
+        <div class={ classes!("w-full", "h-screen", "max-h-screen", "flex", "flex-col", "overflow-hidden") }>
             <nav class={ classes!("w-full", "text-3xl", "flex", "justify-end", "p-3") }>
                 <span class={ classes!("px-2") }>
                     <Link<AppRoute> to={ AppRoute::Decks }>{ "🏡" }</Link<AppRoute>>

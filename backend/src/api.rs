@@ -1,5 +1,5 @@
 use super::auth::Authenticated;
-use super::db::DbPool;
+use super::db::*;
 use super::diesel::prelude::*;
 use super::models::*;
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
@@ -94,6 +94,7 @@ async fn read_cards(
         .inner_join(decks)
         .filter(deck_id.eq(path.into_inner().0))
         .filter(user_id.eq(auth.get_user(&conn).id))
+        .limit(20) // TODO limit responsive to screensize?
         .load(&conn)
         .expect("Error loading cards")
         .into_iter()
@@ -139,7 +140,7 @@ struct NewWebCard {
 
 #[post("/{deck_id}/cards/{card_id}/")]
 async fn update_card(
-    auth: Authenticated,
+    _auth: Authenticated,
     pool: web::Data<DbPool>,
     path: web::Path<(i32, i32)>,
     payload: web::Json<NewWebCard>,
@@ -148,7 +149,7 @@ async fn update_card(
 
     log::info!("update_card");
     // TODO still have to confirm this is the right user and the right deck.
-    let (this_deck_id, this_card_id) = path.into_inner();
+    let (_this_deck_id, this_card_id) = path.into_inner();
     let payload = payload.into_inner();
 
     log::info!("{}", payload.back);
@@ -157,10 +158,7 @@ async fn update_card(
 
     let target = cards.filter(id.eq(this_card_id));
     let result_count = diesel::update(target)
-        .set((
-            front.eq(payload.front),
-            back.eq(payload.back),
-        ))
+        .set((front.eq(payload.front), back.eq(payload.back)))
         .execute(&conn)
         .expect("Error updating card");
 
@@ -191,14 +189,14 @@ async fn new_card(
 
 #[delete("/{deck_id}/cards/{card_id}/")]
 async fn delete_card(
-    auth: Authenticated,
+    _auth: Authenticated,
     pool: web::Data<DbPool>,
     path: web::Path<(i32, i32)>,
 ) -> impl Responder {
     use super::schema::cards::dsl::*;
 
     // TODO still have to confirm this is the right user and the right deck.
-    let (this_deck_id, this_card_id) = path.into_inner();
+    let (_this_deck_id, this_card_id) = path.into_inner();
 
     let conn = pool.get().unwrap();
     let target = cards.filter(id.eq(this_card_id));

@@ -52,10 +52,10 @@ pub fn main_switch(routes: &MainRoute) -> Html {
 fn app_switch(routes: &AppRoute) -> Html {
     match routes {
         AppRoute::Decks => html! { <DeckHome /> },
-        AppRoute::DeckDetail { id } => html! { <DeckDetail id={ id.clone() } /> },
+        AppRoute::DeckDetail { id } => html! { <DeckDetail id={ *id } /> },
         AppRoute::CardDetail { deck_id, card_id } => html! {
-            <CardDetail deck_id={ deck_id.clone() } card_id={ card_id.clone() }/>
+            <CardDetail deck_id={ *deck_id } card_id={ *card_id }/>
         },
-        AppRoute::Revision { id } => html! { <Revision id={ id.clone() }/> },
+        AppRoute::Revision { id } => html! { <Revision id={ *id }/> },
     }
 }

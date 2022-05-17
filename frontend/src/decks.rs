@@ -138,10 +138,10 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
     let front_node_ref = use_node_ref();
     let back_node_ref = use_node_ref();
 
-    let cards = use_state(|| vec![]);
+    let cards = use_state(std::vec::Vec::new);
     {
         let cards = cards.clone();
-        let id = id.clone();
+        let id = *id;
         use_effect_with_deps(
             move |_| {
                 let cards = cards.clone();
@@ -163,7 +163,7 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
     let deck = use_state(|| None);
     {
         let deck = deck.clone();
-        let id = id.clone();
+        let id = *id;
         use_effect_with_deps(
             move |_| {
                 let deck = deck.clone();
@@ -184,19 +184,19 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
 
     let history = use_history().unwrap();
     let on_revise_click = {
-        let id = id.clone();
-        let history = history.clone();
+        let id = *id;
+        let history = history;
         Callback::from(move |_| history.push(AppRoute::Revision { id }))
     };
 
     let on_add_click = {
-        let id = id.clone();
+        let id = *id;
         let front_node_ref = front_node_ref.clone();
         let back_node_ref = back_node_ref.clone();
         let cards = cards.clone();
 
         Callback::from(move |_| {
-            let id = id.clone();
+            let id = id;
             let front_input = front_node_ref.cast::<HtmlInputElement>().unwrap();
             let back_input = back_node_ref.cast::<HtmlInputElement>().unwrap();
             let front = front_input.value();
@@ -240,7 +240,7 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
             <div class={ classes!("grid", "gap-4", "grid-cols-4", "py-4") }>
                 {
                     (*cards).clone().into_iter().map(|card| {
-                        html! { <CardSummary deck_id={ id.clone() } card={ card.clone() } /> }
+                        html! { <CardSummary deck_id={ *id } card={ card.clone() } /> }
                     }).collect::<Html>()
                 }
             </div>
@@ -265,7 +265,6 @@ pub struct CardSummaryProps {
 
 #[function_component(CardSummary)]
 fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
-
     fn card_content(content: &str) -> Html {
         html! {
             <span class={ classes!("py-1", "h-full", "flex", "flex-col", "justify-center") }>
@@ -277,9 +276,9 @@ fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
 
     let history = use_history().unwrap();
     let onclick = {
-        let deck_id = deck_id.clone();
-        let card_id = card.id.clone();
-        let history = history.clone();
+        let deck_id = *deck_id;
+        let card_id = card.id;
+        let history = history;
         Callback::from(move |_| {
             history.push(AppRoute::CardDetail { deck_id, card_id });
         })
@@ -296,7 +295,7 @@ fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
                 )
             }
             { onclick }
-            key={ card.id.clone() }
+            key={ card.id }
             card_id={ "bar" }
         >
             { card_content(&card.front) }
@@ -308,12 +307,11 @@ fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
 
 #[function_component(DeckHome)]
 pub fn deck_home() -> Html {
-    let decks = use_state(|| vec![]);
+    let decks = use_state(Vec::new);
     {
         let decks = decks.clone();
         use_effect_with_deps(
             move |_| {
-                let decks = decks.clone();
                 wasm_bindgen_futures::spawn_local(async move {
                     match get("/api/decks/").await {
                         Ok::<Vec<Deck>, _>(fetched_decks) => {

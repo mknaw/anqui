@@ -39,7 +39,7 @@ async fn handle_request(request: Request) -> Result<Response, ApiError> {
 }
 
 async fn deserialize<T: DeserializeOwned>(response: Response) -> Result<T, ApiError> {
-    response.json().await.map_err(|e| ApiError::from(e))
+    response.json().await.map_err(ApiError::from)
 }
 
 pub async fn get<T: DeserializeOwned>(url: &str) -> Result<T, ApiError> {

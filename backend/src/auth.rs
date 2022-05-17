@@ -176,7 +176,7 @@ async fn login(
     if let Ok(user) = user {
         if verify(&form.password, &user.password).unwrap() {
             let session = user.new_session(&conn);
-            req_id.remember(session.token.clone());
+            req_id.remember(session.token);
             return HttpResponse::Ok().finish();
         } else {
             err_message = "Mot de passe invalide".to_string();
@@ -185,7 +185,7 @@ async fn login(
         err_message = "Nom d'utilisateur invalide".to_string();
     }
     req_id.forget();
-    HttpResponse::Forbidden().body(err_message.to_owned())
+    HttpResponse::Forbidden().body(err_message)
 }
 
 #[get("/logout/")]

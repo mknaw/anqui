@@ -116,23 +116,23 @@ impl Card {
             .expect("Error saving new card")
     }
 
-    pub fn add_feedback(&mut self, conn: &PgConnection, feedback: &str) -> () {
+    pub fn add_feedback(&mut self, conn: &PgConnection, feedback: &str) {
         // Take user's difficulty rating and change card weight accordingly.
         use super::schema::cards::dsl::*;
 
         let mut weight = self.revision_weight;
         match feedback {
             "fail" => {
-                weight = weight * 4;
+                weight *= 4;
             }
             "hard" => {
-                weight = weight * 2;
+                weight *= 2;
             }
             "good" => {
-                weight = weight / 2;
+                weight /= 2;
             }
             "easy" => {
-                weight = weight / 4;
+                weight /= 4;
             }
             _ => {}
         };
@@ -154,6 +154,6 @@ impl User {
         diesel::delete(sessions.filter(user_id.eq(self.id)))
             .execute(conn)
             .unwrap();
-        Session::create(conn, &self)
+        Session::create(conn, self)
     }
 }

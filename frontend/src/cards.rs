@@ -28,14 +28,14 @@ fn cards(props: &CardDisplayProps) -> Html {
     } else {
         props.card.back.to_string()
     };
-    let foo = {
+    let onclick = {
         let onclick = props.onclick.clone();
         Callback::from(move |_| onclick.emit(()))
     };
 
     html! {
         <div>
-            <div onclick={ foo }>{ display }</div>
+            <div { onclick }>{ display }</div>
         </div>
     }
 }
@@ -120,7 +120,7 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
 
     {
         let card_queue = card_queue.clone();
-        let id = id.clone();
+        let id = *id;
         use_effect_with_deps(
             move |_| {
                 let card_queue = card_queue.clone();
@@ -157,7 +157,7 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
                 let popped = cards.pop();
                 card_queue.set(Some(cards));
 
-                popped.map(|card: Card| {
+                if let Some(card) = popped {
                     wasm_bindgen_futures::spawn_local(async move {
                         let url = format!("/api/cards/{}/feedback/", card.id);
                         let payload = serde_json::Value::String(label_feedback(&feedback));
@@ -166,10 +166,10 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
                             Err(_) => (),
                         };
                     });
-                });
+                }
             })
         }
-        None => Callback::from(|_| return),
+        None => Callback::from(|_| {}),
     };
 
     html! {
@@ -198,7 +198,7 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
                             </>
                         },
                         None => html!{
-                            <Redirect<AppRoute> to={AppRoute::DeckDetail { id: id.clone() }}/>
+                            <Redirect<AppRoute> to={AppRoute::DeckDetail { id: *id }}/>
                         },
                     }
                 } else {
@@ -217,7 +217,6 @@ pub struct CardDetailProps {
 
 #[function_component(CardDetail)]
 pub fn card_detail(CardDetailProps { deck_id, card_id }: &CardDetailProps) -> Html {
-
     let api_url = format!("/api/decks/{}/cards/{}/", deck_id, card_id);
     let history = use_history().unwrap();
     // TODO if accessing from the view in which we already got all the cards as a list,
@@ -233,8 +232,8 @@ pub fn card_detail(CardDetailProps { deck_id, card_id }: &CardDetailProps) -> Ht
                 wasm_bindgen_futures::spawn_local(async move {
                     match get(&api_url).await {
                         Ok::<Card, _>(fetched_card) => {
-                            front.set(fetched_card.front.clone());
-                            back.set(fetched_card.back.clone());
+                            front.set(fetched_card.front);
+                            back.set(fetched_card.back);
                         }
                         _ => (),
                     }
@@ -266,7 +265,7 @@ pub fn card_detail(CardDetailProps { deck_id, card_id }: &CardDetailProps) -> Ht
         let api_url = api_url.clone();
         let front = front.clone();
         let back = back.clone();
-        let deck_id = deck_id.clone();
+        let deck_id = *deck_id;
         let history = history.clone();
         Callback::from(move |e: FocusEvent| {
             e.prevent_default();
@@ -282,17 +281,15 @@ pub fn card_detail(CardDetailProps { deck_id, card_id }: &CardDetailProps) -> Ht
             wasm_bindgen_futures::spawn_local(async move {
                 let api_url = api_url.clone();
                 match post_vanilla(&api_url, payload).await {
-                    Ok(_) => history.push(AppRoute::DeckDetail { id: deck_id.clone() }),
-                    Err(_) => (),  // TODO
+                    Ok(_) => history.push(AppRoute::DeckDetail { id: deck_id }),
+                    Err(_) => (), // TODO
                 }
             });
         })
     };
 
     let delete = {
-        let api_url = api_url.clone();
-        let deck_id = deck_id.clone();
-        let history = history.clone();
+        let deck_id = *deck_id;
 
         Callback::from(move |_| {
             let history = history.clone();
@@ -300,8 +297,8 @@ pub fn card_detail(CardDetailProps { deck_id, card_id }: &CardDetailProps) -> Ht
             wasm_bindgen_futures::spawn_local(async move {
                 let api_url = api_url.clone();
                 match delete(&api_url).await {
-                    Ok(_) => history.push(AppRoute::DeckDetail { id: deck_id.clone() }),
-                    Err(_) => (),  // TODO
+                    Ok(_) => history.push(AppRoute::DeckDetail { id: deck_id }),
+                    Err(_) => (), // TODO
                 }
             });
         })

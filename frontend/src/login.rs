@@ -26,7 +26,6 @@ pub fn login() -> Html {
             let username = username_node_ref.cast::<HtmlInputElement>();
             let password = password_node_ref.cast::<HtmlInputElement>();
             let button = button_node_ref.cast::<Element>().unwrap();
-            log::info!("{}", button.class_name().to_string());
             button.set_class_name("text-gray-600 pointer-events-none");
 
             let history = history.clone();
