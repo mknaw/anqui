@@ -11,5 +11,7 @@ pub fn new_db_pool() -> DbPool {
         .parse()
         .unwrap();
     let manager = ConnectionManager::<PgConnection>::new(database_url);
-    Builder::new().max_size(max_db_connections).build_unchecked(manager)
+    Builder::new()
+        .max_size(max_db_connections)
+        .build_unchecked(manager)
 }

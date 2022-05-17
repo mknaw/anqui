@@ -1,10 +1,10 @@
-use reqwasm::http::Request;
 use serde::Deserialize;
 use serde_json::json;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+use crate::api::{delete, get, post};
 use crate::cards::Card;
 use crate::routes::Route;
 
@@ -47,9 +47,10 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
             let hidden = hidden.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 let url = format!("/api/decks/{}/", deck.id);
-                // TODO what if it fails?
-                Request::delete(&url).send().await.unwrap();
-                hidden.set(true);
+                match delete(&url).await {
+                    Ok(_) => hidden.set(true),
+                    Err(_) => (), // TODO probably should do... something...
+                }
             });
         })
     };
@@ -100,17 +101,14 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
                     return;
                 }
                 wasm_bindgen_futures::spawn_local(async move {
-                    let new_deck: Deck = Request::post("/api/decks/")
-                        .header("Content-Type", "application/json")
-                        .body(serde_json::to_string(&json!({ "name": name })).unwrap())
-                        .send()
-                        .await
-                        .unwrap()
-                        .json()
-                        .await
-                        .unwrap();
-                    push_deck.emit(new_deck);
-                    input.set_value("");
+                    let payload = json!({ "name": name });
+                    match post("/api/decks/", payload).await {
+                        Ok::<Deck, _>(new_deck) => {
+                            push_deck.emit(new_deck);
+                            input.set_value("");
+                        }
+                        _ => (),
+                    }
                 });
             };
         })
@@ -140,49 +138,41 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
     {
         let cards = cards.clone();
         let id = id.clone();
-        use_effect_with_deps(
-            move |_| {
-                let cards = cards.clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!("/api/decks/{}/cards/", id);
-                    let fetched_cards: Vec<Card> = Request::get(&url)
-                        .send()
-                        .await
-                        .unwrap()
-                        .json()
-                        .await
-                        .unwrap();
-                    cards.set(fetched_cards);
-                });
-                || ()
-            },
-            (),
-        );
+        use_effect_with_deps(move |_| {
+            let cards = cards.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                let url = format!("/api/decks/{}/cards/", id);
+                match get(&url).await {
+                    Ok::<Vec<Card>, _>(fetched_cards) => {
+                        cards.set(fetched_cards);
+                    }
+                    _ => (),
+                }
+            });
+            || ()
+        },
+        ());
     }
 
-    // TODO this stuff is too verbose, must figure out a way to split out to a helper.
     let deck = use_state(|| None);
     {
         let deck = deck.clone();
         let id = id.clone();
-        use_effect_with_deps(
-            move |_| {
-                let deck = deck.clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!("/api/decks/{}/", id);
-                    let fetched_deck: Deck = Request::get(&url)
-                        .send()
-                        .await
-                        .unwrap()
-                        .json()
-                        .await
-                        .unwrap();
-                    deck.set(Some(fetched_deck));
-                });
-                || ()
-            },
-            (),
-        );
+        use_effect_with_deps(move |_| {
+            log::info!("use effect?");
+            let deck = deck.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                let url = format!("/api/decks/{}/", id);
+                match get(&url).await {
+                    Ok::<Deck, _>(fetched_deck) => {
+                        deck.set(Some(fetched_deck));
+                    }
+                    _ => (),
+                }
+            });
+            || ()
+        },
+        ());
     }
 
     let history = use_history().unwrap();
@@ -213,20 +203,16 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
             wasm_bindgen_futures::spawn_local(async move {
                 let url = format!("/api/decks/{}/cards/", id);
                 let payload = json!({ "front": front, "back": back });
-                let card: Card = Request::post(&url)
-                    .header("Content-Type", "application/json")
-                    .body(serde_json::to_string(&payload).unwrap())
-                    .send()
-                    .await
-                    .unwrap()
-                    .json()
-                    .await
-                    .unwrap();
-                front_input.set_value("");
-                back_input.set_value("");
-                let mut card_vec = (*cards).clone();
-                card_vec.push(card);
-                cards.set(card_vec);
+                match post(&url, payload).await {
+                    Ok::<Card, _>(card) => {
+                        front_input.set_value("");
+                        back_input.set_value("");
+                        let mut card_vec = (*cards).clone();
+                        card_vec.push(card);
+                        cards.set(card_vec);
+                    }
+                    _ => (),
+                }
             });
         })
     };
@@ -275,23 +261,19 @@ pub fn deck_home() -> Html {
     let decks = use_state(|| vec![]);
     {
         let decks = decks.clone();
-        use_effect_with_deps(
-            move |_| {
-                let decks = decks.clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    let fetched_decks: Vec<Deck> = Request::get("/api/decks/")
-                        .send()
-                        .await
-                        .unwrap()
-                        .json()
-                        .await
-                        .unwrap();
-                    decks.set(fetched_decks);
-                });
-                || ()
-            },
-            (),
-        );
+        use_effect_with_deps(move |_| {
+            let decks = decks.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                match get("/api/decks/").await {
+                    Ok::<Vec<Deck>, _>(fetched_decks) => {
+                        decks.set(fetched_decks);
+                    }
+                    _ => (),
+                }
+            });
+            || ()
+        },
+        ());
     }
 
     let push_deck = {

@@ -1,5 +1,5 @@
+use crate::api::{get, post_vanilla};
 use crate::Route;
-use reqwasm::http::Request;
 use serde::Deserialize;
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -118,24 +118,18 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
     {
         let card_queue = card_queue.clone();
         let id = id.clone();
-        use_effect_with_deps(
-            move |_| {
-                let card_queue = card_queue.clone();
-                wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!("/api/decks/{}/cards/", id);
-                    let fetched_cards: Vec<Card> = Request::get(&url)
-                        .send()
-                        .await
-                        .unwrap()
-                        .json()
-                        .await
-                        .unwrap();
-                    card_queue.set(Some(fetched_cards));
-                });
-                || ()
-            },
-            (),
-        );
+        use_effect_with_deps(move |_| {
+            let card_queue = card_queue.clone();
+            wasm_bindgen_futures::spawn_local(async move {
+                let url = format!("/api/decks/{}/cards/", id);
+                match get(&url).await {
+                    Ok::<Vec<Card>, _>(fetched_cards) => card_queue.set(Some(fetched_cards)),
+                    Err(_) => (),
+                };
+            });
+            || ()
+        },
+        ());
     }
 
     let on_card_click = {
@@ -161,11 +155,11 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
                 popped.map(|card: Card| {
                     wasm_bindgen_futures::spawn_local(async move {
                         let url = format!("/api/cards/{}/feedback/", card.id);
-                        Request::post(url.as_str())
-                            .body(label_feedback(&feedback))
-                            .send()
-                            .await
-                            .unwrap();
+                        let payload = serde_json::Value::String(label_feedback(&feedback));
+                        match post_vanilla(&url, payload).await {
+                            Ok(_) => (),
+                            Err(_) => (),
+                        };
                     });
                 });
             })

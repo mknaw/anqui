@@ -9,6 +9,8 @@ use serde::Deserialize;
 async fn read_decks(_auth: Authenticated, pool: web::Data<DbPool>) -> impl Responder {
     use super::schema::decks::dsl::*;
 
+    log::info!("read_decks");
+
     let conn = pool.get().unwrap();
     let results = decks.load::<Deck>(&conn).expect("Error loading decks");
 
@@ -56,6 +58,8 @@ async fn read_deck(
 ) -> impl Responder {
     use super::schema::decks::dsl::*;
 
+    log::info!("read_deck");
+
     let conn = pool.get().unwrap();
     let deck = decks
         .filter(id.eq(path.into_inner().0))
@@ -72,6 +76,8 @@ async fn read_cards(
     path: web::Path<(i32,)>,
 ) -> impl Responder {
     use super::schema::cards::dsl::*;
+
+    log::info!("read_cards");
 
     let conn = pool.get().unwrap();
     let results = cards

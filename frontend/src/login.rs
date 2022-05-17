@@ -1,9 +1,9 @@
-use reqwasm::http::Request;
 use serde_json::json;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+use crate::api::post_vanilla;
 use crate::routes::Route;
 
 #[function_component(Login)]
@@ -39,17 +39,9 @@ pub fn login() -> Html {
                     "password": password,
                 });
                 wasm_bindgen_futures::spawn_local(async move {
-                    let response = Request::post("/login/")
-                        .header("Content-Type", "application/json")
-                        .body(serde_json::to_string(&payload).unwrap())
-                        .send()
-                        .await;
-                    if let Ok(response) = response {
-                        if response.status() == 200 {
-                            history.push(Route::Decks);
-                        } else {
-                            error.set(response.text().await.unwrap());
-                        }
+                    match post_vanilla("/login/", payload).await {
+                        Ok(_) => history.push(Route::Decks),
+                        Err(e) => error.set(e.to_string()),
                     }
                 });
             };
