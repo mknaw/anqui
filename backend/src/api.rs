@@ -31,12 +31,12 @@ pub struct DeckPayload {
 async fn new_deck(
     auth: Authenticated,
     pool: web::Data<DbPool>,
-    new_deck: web::Json<DeckPayload>,
+    payload: web::Json<DeckPayload>,
 ) -> impl Responder {
     use common::schema::decks;
 
     let conn = pool.get().unwrap();
-    let name = new_deck.name.trim();
+    let name = payload.name.trim();
     let deck = diesel::insert_into(decks::table)
         .values((
             decks::name.eq(name),
@@ -61,6 +61,29 @@ async fn read_deck(
         .filter(id.eq(deck_id))
         .filter(user_id.eq(auth.get_user(&conn).id))
         .first::<Deck>(&conn)
+        .unwrap();
+
+    HttpResponse::Ok().json(deck)
+}
+
+#[post("{id}/")]
+async fn update_deck(
+    auth: Authenticated,
+    pool: web::Data<DbPool>,
+    path: web::Path<(i32,)>,
+    payload: web::Json<DeckPayload>,
+) -> impl Responder {
+    use common::schema::decks;
+
+    let (deck_id,) = path.into_inner();
+    let conn = pool.get().unwrap();
+    let name = payload.name.trim();
+    let target = decks::table
+        .filter(decks::id.eq(deck_id))
+        .filter(decks::user_id.eq(auth.get_user(&conn).id));
+    let deck = diesel::update(target)
+        .set(decks::name.eq(name))
+        .get_result::<Deck>(&conn)
         .unwrap();
 
     HttpResponse::Ok().json(deck)
@@ -282,7 +305,7 @@ async fn get_revision_cards(
         .inner_join(decks)
         .filter(deck_id.eq(path.into_inner().0))
         .filter(user_id.eq(auth.get_user(&conn).id))
-        .order_by(sql::<i32>("random() ^ revision_weight"))
+        .order_by(sql::<i32>("-random() * revision_weight"))
         .select(id)
         // TODO should come from a user preference.
         .limit(10)

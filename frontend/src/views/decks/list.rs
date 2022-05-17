@@ -130,6 +130,7 @@ pub fn deck_create(DeckCreateProps { push_deck }: &DeckCreateProps) -> Html {
     };
 
     html! {
+        // TODO pencil + input should just be a single component.
         <div class={ classes!("text-3xl", "portrait:text-6xl", "flex", "w-full", "py-3") }>
             <button onclick={ on_create } class={ classes!("px-2") }>
                 { emojis::PENCIL }

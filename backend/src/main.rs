@@ -53,6 +53,7 @@ async fn main() -> std::io::Result<()> {
                             .service(read_decks)
                             .service(read_deck)
                             .service(new_deck)
+                            .service(update_deck)
                             .service(delete_deck)
                             .service(read_cards)
                             .service(read_card)

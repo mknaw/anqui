@@ -1,11 +1,13 @@
 use common::models::{Card, Deck};
 use common::query_params::CardReadQuery;
+use serde_json::json;
 use wasm_bindgen::JsCast;
 use web_sys::{Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::api;
+use crate::components::Modal;
 use crate::emojis;
 use crate::routes::AppRoute;
 use crate::AppContext;
@@ -29,7 +31,6 @@ pub fn deck_detail(DeckDetailProps { deck_id }: &DeckDetailProps) -> Html {
                 api::get_deck(
                     deck_id,
                     Box::new(move |fetched_deck| {
-                        ctx.set_title.emit(fetched_deck.name.clone());
                         deck.set(Some(fetched_deck));
                     }),
                 );
@@ -39,12 +40,35 @@ pub fn deck_detail(DeckDetailProps { deck_id }: &DeckDetailProps) -> Html {
         );
     }
 
+    // Allow children to update the `deck` state.
+    let update_deck = {
+        let deck = deck.clone();
+        Callback::from(move |updated_deck: Deck| {
+            log::info!("got my deck");
+            deck.set(Some(updated_deck));
+        })
+    };
+
+    // Set title on load.
+    {
+        let deck = deck.clone();
+        use_effect_with_deps(
+            move |deck| {
+                if let Some(deck) = (**deck).clone() {
+                    ctx.set_title.emit(deck.name);
+                }
+                || ()
+            },
+            deck,
+        )
+    }
+
     html! {
         <>
             <CardList { deck_id } />
             {
                 if let Some(deck) = (*deck).clone() {
-                    html! { <DeckDetailToolbar { deck } /> }
+                    html! { <DeckDetailToolbar { deck } { update_deck } /> }
                 } else {
                     html! {}
                 }
@@ -181,10 +205,15 @@ fn card_list(CardListProps { deck_id }: &CardListProps) -> Html {
 #[derive(PartialEq, Properties)]
 struct DeckDetailToolbarProps {
     deck: Deck,
+    update_deck: Callback<Deck>,
 }
 
 #[function_component(DeckDetailToolbar)]
-fn deck_detail_toolbar(DeckDetailToolbarProps { deck }: &DeckDetailToolbarProps) -> Html {
+fn deck_detail_toolbar(
+    DeckDetailToolbarProps { deck, update_deck }: &DeckDetailToolbarProps,
+) -> Html {
+    let ctx = use_context::<AppContext>().unwrap();
+
     let history = use_history().unwrap();
     let on_revise_click = {
         let history = history.clone();
@@ -197,6 +226,19 @@ fn deck_detail_toolbar(DeckDetailToolbarProps { deck }: &DeckDetailToolbarProps)
         let deck_id = deck.id;
         Callback::from(move |_| {
             history.push(AppRoute::CardCreateForm { deck_id });
+        })
+    };
+
+    let on_gear_click = {
+        // TODO feels like I should be doing it smarter pass borrowed instead of clone
+        let deck = (*deck).clone();
+        let update_deck = update_deck.clone();
+        Callback::from(move |_| {
+            let deck = deck.clone();
+            let update_deck = update_deck.clone();
+            ctx.set_modal.emit(Some(html! {
+                <DeckFormModal { deck } { update_deck } />
+            }));
         })
     };
 
@@ -223,7 +265,7 @@ fn deck_detail_toolbar(DeckDetailToolbarProps { deck }: &DeckDetailToolbarProps)
                 { emojis::PENCIL }
             </button>
             <button
-                // TODO onclick={ ... }
+                onclick={ on_gear_click }
                 class={ classes!("px-2") }
             >
                 { emojis::GEAR }
@@ -283,5 +325,72 @@ fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
             <hr class={ classes!("w-full", "border-gray-600", "border", "border-dashed") } />
             { card_content(&card.back) }
         </div>
+    }
+}
+
+// TODO probably should move it... somewhere...
+#[derive(PartialEq, Properties)]
+pub struct DeckFormModalProps {
+    pub deck: Deck,
+    pub update_deck: Callback<Deck>,
+}
+
+#[function_component(DeckFormModal)]
+fn deck_form_modal(DeckFormModalProps { deck, update_deck }: &DeckFormModalProps) -> Html {
+    let ctx = use_context::<AppContext>().unwrap();
+
+    let name = use_state(|| deck.name.clone());
+
+    let onsubmit = {
+        let deck_id = deck.id;
+        let name = name.clone();
+        let update_deck = update_deck.clone();
+        Callback::from(move |e: FocusEvent| {
+            e.prevent_default();
+            let update_deck = update_deck.clone();
+            let ctx = ctx.clone();
+            let url = format!("/api/decks/{}/", deck_id);
+            if name.is_empty() {
+                return;
+            }
+            let payload = json!({
+                "name": *name,
+            });
+            wasm_bindgen_futures::spawn_local(async move {
+                if let Ok::<Deck, _>(deck) = api::post(&url, payload).await {
+                    update_deck.emit(deck);
+                    ctx.set_modal.emit(None);
+                }
+            });
+        })
+    };
+
+    let oninput = {
+        let name = name.clone();
+        Callback::from(move |e: InputEvent| {
+            let input: HtmlInputElement = e.target_unchecked_into();
+            name.set(input.value());
+        })
+    };
+
+    html! {
+        <Modal title={ Some("Modifier le paquet") }>
+            <form { onsubmit }>
+                <div class={ classes!("flex", "flex-row") }>
+                    <button
+                        type={ "submit" }
+                        class={ classes!("px-2") }
+                    >
+                        { emojis::PENCIL }
+                    </button>
+                    <input
+                        { oninput }
+                        type="text"
+                        value={ (*name).clone() }
+                        placeholder={ "Nom du paquet" }
+                    />
+                </div>
+            </form>
+        </Modal>
     }
 }

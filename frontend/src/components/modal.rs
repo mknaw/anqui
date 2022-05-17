@@ -2,35 +2,37 @@ use yew::prelude::*;
 
 #[derive(PartialEq, Properties)]
 pub struct ModalProps {
-    pub show: bool,
     pub children: Children,
+    pub title: Option<String>,
 }
 
 #[function_component(Modal)]
-pub fn modal(ModalProps { show, children }: &ModalProps) -> Html {
-    if !show {
-        return html! {}
-    }
-
+pub fn modal(ModalProps { children, title }: &ModalProps) -> Html {
     html! {
         <>
             <div
                 class={
                     classes!(
-                        "h-100vh", "bg-black"
+                        "z-50", "bg-stone-800", "text-5xl", "px-8",
+                        "rounded-lg",
+                        "portrait:text-6xl", "text-3xl"
                     )
                 }
             >
-            </div>
-            <div
-                class={
-                    classes!(
-                        "absolute", "top-50",
-                        "bg-white", "text-black", "text-5xl",
-                    )
+                {
+                    if let Some(title) = title {
+                        html! {
+                            <div class={ classes!("w-full", "text-center", "pt-8") }>
+                                { title }
+                            </div>
+                        }
+                    } else {
+                        html! {}
+                    }
                 }
-            >
-                { for children.iter() }
+                <div class={ classes!("py-8") }>
+                    { for children.iter() }
+                </div>
             </div>
         </>
     }
