@@ -497,12 +497,12 @@ Ensure the default browser behavior of the `hidden` attribute.
   z-index: 10;
 }
 
-.mt-5 {
-  margin-top: 1.25rem;
-}
-
 .mb-32 {
   margin-bottom: 8rem;
+}
+
+.mt-5 {
+  margin-top: 1.25rem;
 }
 
 .flex {
@@ -525,12 +525,12 @@ Ensure the default browser behavior of the `hidden` attribute.
   height: 5vh;
 }
 
-.h-64 {
-  height: 16rem;
-}
-
 .h-\[60vh\] {
   height: 60vh;
+}
+
+.h-64 {
+  height: 16rem;
 }
 
 .h-\[90vh\] {
@@ -683,19 +683,14 @@ Ensure the default browser behavior of the `hidden` attribute.
   padding-right: 0.5rem;
 }
 
-.px-5 {
-  padding-left: 1.25rem;
-  padding-right: 1.25rem;
-}
-
 .py-2 {
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
 }
 
-.py-3 {
-  padding-top: 0.75rem;
-  padding-bottom: 0.75rem;
+.px-5 {
+  padding-left: 1.25rem;
+  padding-right: 1.25rem;
 }
 
 .px-24 {
@@ -703,8 +698,18 @@ Ensure the default browser behavior of the `hidden` attribute.
   padding-right: 6rem;
 }
 
+.py-3 {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
 .text-center {
   text-align: center;
+}
+
+.text-7xl {
+  font-size: 4.5rem;
+  line-height: 1;
 }
 
 .text-3xl {
@@ -714,11 +719,6 @@ Ensure the default browser behavior of the `hidden` attribute.
 
 .text-6xl {
   font-size: 3.75rem;
-  line-height: 1;
-}
-
-.text-7xl {
-  font-size: 4.5rem;
   line-height: 1;
 }
 

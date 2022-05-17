@@ -2,9 +2,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::emojis;
-use crate::views::cards::*;
-use crate::views::decks::*;
-use crate::views::login::*;
+use crate::views;
 use crate::Layout;
 
 #[derive(Clone, Routable, PartialEq)]
@@ -38,7 +36,7 @@ pub enum AppRoute {
 pub fn main_switch(routes: &MainRoute) -> Html {
     match routes {
         MainRoute::RedirectToHome => html! { <Redirect<AppRoute> to={AppRoute::Decks}/> },
-        MainRoute::Login => html! { <Login /> },
+        MainRoute::Login => html! { <views::login::Login /> },
         MainRoute::NotFound => html! {
             <>
                 <h1>{ format!("Page not found {}", emojis::HEAD_BANDAGE) }</h1>
@@ -55,14 +53,18 @@ pub fn main_switch(routes: &MainRoute) -> Html {
 
 fn app_switch(routes: &AppRoute) -> Html {
     match routes {
-        AppRoute::Decks => html! { <DeckHome /> },
-        AppRoute::DeckDetail { deck_id } => html! { <DeckDetail deck_id={ *deck_id } /> },
+        AppRoute::Decks => html! { <views::decks::list::DeckList /> },
+        AppRoute::DeckDetail { deck_id } => html! {
+            <views::decks::detail::DeckDetail deck_id={ *deck_id } />
+        },
         AppRoute::CardCreateForm { deck_id } => html! {
-            <CardForm deck_id={ *deck_id } card_id={ None }/>
+            <views::cards::form::CardForm deck_id={ *deck_id } card_id={ None }/>
         },
         AppRoute::CardUpdateForm { deck_id, card_id } => html! {
-            <CardForm deck_id={ *deck_id } card_id={ *card_id }/>
+            <views::cards::form::CardForm deck_id={ *deck_id } card_id={ *card_id }/>
         },
-        AppRoute::Revision { deck_id } => html! { <Revision deck_id={ *deck_id }/> },
+        AppRoute::Revision { deck_id } => html! {
+            <views::revision::Revision deck_id={ *deck_id }/>
+        },
     }
 }
