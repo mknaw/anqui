@@ -58,11 +58,6 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
     html! {
         <tr key={ deck.id } { class }>
             <td class={ "emoji" }>
-                <Link<Route> to={ Route::DeckDetail { id: deck.id } }>
-                    { "⚙️" }
-                </Link<Route>>
-            </td>
-            <td class={ "emoji" }>
                 <span onclick={ delete_deck }>
                     { "🪓" }
                 </span>
@@ -72,7 +67,11 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
                     { "🛎️" }
                 </Link<Route>>
             </td>
-            <td>{ &deck.name }</td>
+            <td>
+                <Link<Route> to={ Route::DeckDetail { id: deck.id } }>
+                    { &deck.name }
+                </Link<Route>>
+            </td>
         </tr>
     }
 }
@@ -119,7 +118,10 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
             <button onclick={ on_add_click }>
                 { "✏️" }
             </button>
-            <input ref={ input_node_ref } />
+            <input
+                ref={ input_node_ref }
+                placeholder={ "Nouveau paquet de cartes" }
+            />
         </div>
     }
 }
@@ -251,6 +253,9 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
                     <input ref={ front_node_ref } placeholder="de face" />
                     <input ref={ back_node_ref } placeholder="arrière" />
                 </div>
+            </div>
+            <div>
+                <Link<Route> to={ Route::Decks }>{ "🏡" }</Link<Route>>
             </div>
         </>
     }

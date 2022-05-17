@@ -10,6 +10,7 @@ pub enum Route {
     Login,
     #[at("/")]
     Decks,
+    // TODO would be nice to have a title slug instead of int id.
     #[at("/decks/:id")]
     DeckDetail { id: usize },
     #[at("/decks/:id/revision/")]
@@ -28,7 +29,7 @@ pub fn switch(routes: &Route) -> Html {
         Route::NotFound => html! {
             <>
                 <h1>{ "Page not found 🤕" }</h1>
-                <Link<Route> to={ Route::Decks }>{ "Take me home" }</Link<Route>>
+                <Link<Route> to={ Route::Decks }>{ "🏡" }</Link<Route>>
             </>
         },
     }

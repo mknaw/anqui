@@ -7,7 +7,7 @@ body,
 input,
 button
   font-family: 'Rubik', Arial, Helvetica, sans-serif
-  font-size: xxx-large
+  font-size: xx-large
   color: $my-white
 
 input,
@@ -21,13 +21,14 @@ input
 button:hover
   cursor: pointer
 
-body
-  @media (max-aspect-ratio: 1/1)
-    font-size: xxx-large
+a
+  text-decoration: none
+  color: $my-white
 
+body
+  font-size: xx-large
   background-color: $my-black
   font-family: 'Rubik', Arial, Helvetica, sans-serif
-  font-size: large
   height: 100vh
   display: flex
   flex-flow: column
@@ -71,9 +72,6 @@ td
 .emoji
   // not really emoji specific but just a standin for now
   width: 0
-
-  a
-    text-decoration: none
 
   span
     cursor: pointer
