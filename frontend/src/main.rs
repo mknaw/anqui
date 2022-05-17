@@ -8,6 +8,11 @@ mod lib;
 mod routes;
 mod views;
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct AppContext {
+    set_title: Callback<String>,
+}
+
 #[derive(PartialEq, Properties)]
 pub struct LayoutProps {
     children: Children,
@@ -15,38 +20,58 @@ pub struct LayoutProps {
 
 #[function_component(Layout)]
 pub fn layout(LayoutProps { children }: &LayoutProps) -> Html {
+    let title = use_state(|| "".to_string());
+    let set_title = {
+        let title = title.clone();
+        Callback::from(move |new_title: String| title.set(new_title))
+    };
+
+    let ctx = use_state(|| AppContext { set_title });
+
     html! {
-        <div
-            class={
-                classes!(
-                    "w-full", "h-screen", "max-h-screen",
-                    "flex", "flex-col", "justify-between", "items-center",
-                )
-            }
-        >
-            <nav
+        <ContextProvider<AppContext> context={(*ctx).clone()}>
+            <div
                 class={
                     classes!(
-                        "absolute",  "right-0", "text-6xl", "lg:text-3xl", "flex", "justify-end", "p-5"
+                        "w-full", "h-screen", "max-h-screen", "overflow-hidden",
+                        "flex", "flex-col", "items-center",
                     )
                 }
-        >
-                <span class={ classes!("px-2") }>
-                    <Link<AppRoute> to={ AppRoute::Decks }>{ emojis::HOME }</Link<AppRoute>>
-                </span>
-                <span class={ classes!("px-2") }>
-                    <a href={ "/logout/" }>
-                        { emojis::WAVE }
-                    </a>
-                </span>
-            </nav>
-            <div
-                id={ "content" }
-                class={ classes!("flex", "flex-col", "justify-center", "h-full", "w-full", "items-center") }
             >
-                { for children.iter() }
+                <nav
+                    class={
+                        classes!(
+                            "bg-blk", "h-[5vh]", "w-full", "z-10",
+                            "portrait:text-6xl", "lg:text-3xl", "flex", "justify-center", "items-center",
+                        )
+                    }
+                >
+                    <span>{ (*title).clone() }</span>
+                    <span class={ classes!("absolute", "right-5") }>
+                        <span class={ classes!("px-2") }>
+                            <Link<AppRoute> to={ AppRoute::Decks }>
+                                { emojis::HOME }
+                            </Link<AppRoute>>
+                        </span>
+                        <span class={ classes!("px-2") }>
+                            <a href={ "/logout/" }>
+                                { emojis::WAVE }
+                            </a>
+                        </span>
+                    </span>
+                </nav>
+                <div
+                    id={ "content" }
+                    class={
+                        classes!(
+                            "flex", "flex-col", "justify-center", "h-95vh", "w-full", "items-center",
+                        )
+                    }
+                >
+                    { for children.iter() }
+                </div>
             </div>
-        </div>
+        </ContextProvider<AppContext>>
     }
 }
 

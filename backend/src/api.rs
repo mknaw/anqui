@@ -157,7 +157,7 @@ async fn update_card(
     let conn = pool.get().unwrap();
 
     let target = cards.filter(id.eq(this_card_id));
-    let result_count = diesel::update(target)
+    diesel::update(target)
         .set((front.eq(payload.front), back.eq(payload.back)))
         .execute(&conn)
         .expect("Error updating card");
@@ -242,8 +242,8 @@ async fn get_revision_cards(
         .filter(user_id.eq(auth.get_user(&conn).id))
         .order_by(diesel::dsl::sql::<i32>("random() ^ revision_weight"))
         .select(id)
-        // TODO would be nice to take this from a user preference.
-        .limit(5)
+        // TODO should come from a user preference.
+        .limit(10)
         .load::<i32>(&conn)
         .expect("Error loading cards");
 

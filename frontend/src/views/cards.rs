@@ -3,9 +3,10 @@ use web_sys::HtmlTextAreaElement;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::api::{delete, get, post_vanilla};
+use crate::AppContext;
+use crate::api::{delete, get, get_deck, post_vanilla};
 use crate::emojis;
-use crate::models::Card;
+use crate::models::{Card, Deck};
 use crate::AppRoute;
 
 #[derive(PartialEq, Properties)]
@@ -15,7 +16,7 @@ pub struct CardFormProps {
 }
 
 #[function_component(CardForm)]
-pub fn card_detail(CardFormProps { deck_id, card_id }: &CardFormProps) -> Html {
+pub fn card_form(CardFormProps { deck_id, card_id }: &CardFormProps) -> Html {
     let api_url = if let Some(card_id) = card_id {
         format!("/api/decks/{}/cards/{}/", deck_id, card_id)
     } else {
@@ -153,21 +154,28 @@ struct RevisionCardDisplayProps {
     onclick: Callback<()>,
 }
 
+// TODO probably should pull out a common component to use here and in the card list.
 #[function_component(RevisionCardDisplay)]
-fn cards(props: &RevisionCardDisplayProps) -> Html {
-    let display = if props.front_shown {
-        props.card.front.to_string()
-    } else {
-        props.card.back.to_string()
-    };
+fn revision_card(props: &RevisionCardDisplayProps) -> Html {
+    let cursor = props.front_shown.then(|| "cursor-pointer");
+
     let onclick = {
         let onclick = props.onclick.clone();
         Callback::from(move |_| onclick.emit(()))
     };
 
     html! {
-        <div>
-            <div { onclick }>{ display }</div>
+        <div class={ classes!("flex", "flex-col", "items-center", cursor) }>
+            <div { onclick }>{ &props.card.front }</div>
+            {
+                if !props.front_shown {
+                    html! {
+                        <div>{ &props.card.back }</div>
+                    }
+                } else {
+                    html! {}
+                }
+            }
         </div>
     }
 }
@@ -204,7 +212,13 @@ fn feedback_bar(FeedbackBarProps { onclick }: &FeedbackBarProps) -> Html {
     ];
 
     html! {
-        <div>
+        <div
+            class={
+                classes!(
+                    "flex", "flex-row", "mt-5"
+                )
+            }
+        >
             {
                 feedbacks.into_iter().map(|feedback| {
                     html!{
@@ -233,10 +247,25 @@ fn feedback_button(props: &FeedbackButtonProps) -> Html {
         Callback::from(move |_| onclick.emit(feedback.clone()))
     };
 
+    let color = match props.feedback {
+        Feedback::Fail => "bg-red-500",
+        Feedback::Hard => "bg-orange-500",
+        Feedback::Good => "bg-yellow-500",
+        Feedback::Easy => "bg-green-500",
+    };
+
     html! {
-        <button onclick={ on_feedback_click }>
-            { label_feedback(&props.feedback) }
-        </button>
+        <div
+            class={
+                classes!(
+                    "flex", "justify-center", "w-32", "px-5", color,
+                )
+            }
+        >
+            <button onclick={ on_feedback_click }>
+                { label_feedback(&props.feedback) }
+            </button>
+        </div>
     }
 }
 
@@ -250,6 +279,13 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
     let card_queue: UseStateHandle<Option<Vec<Card>>> = use_state(|| None);
     let front_shown = use_state(|| true);
 
+    let ctx = use_context::<AppContext>().unwrap();
+    get_deck(*deck_id, Box::new(
+        move |fetched_deck: Deck| {
+            ctx.set_title.emit(fetched_deck.name);
+        }
+    ));
+
     {
         let card_queue = card_queue.clone();
         let deck_id = *deck_id;
@@ -257,7 +293,7 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
             move |_| {
                 let card_queue = card_queue.clone();
                 wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!("/api/decks/{}/cards/", deck_id);
+                    let url = format!("/api/decks/{}/revision/", deck_id);
                     if let Ok::<Vec<Card>, _>(fetched_cards) = get(&url).await {
                         card_queue.set(Some(fetched_cards));
                     };
@@ -278,6 +314,7 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
             let card_queue = card_queue.clone();
             let cards = cards.clone();
             let front_shown = front_shown.clone();
+
             Callback::from(move |feedback: Feedback| {
                 let mut cards = cards.clone();
                 let front_shown_val = !*front_shown;
@@ -300,39 +337,41 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
         None => Callback::from(|_| {}),
     };
 
-    html! {
-        <div>
-            {
-                if let Some(card_queue) = (*card_queue).clone() {
-                    match (*card_queue).last() {
-                        Some(c) => html! {
-                            <>
-                                <RevisionCardDisplay
-                                    card={ c.clone() }
-                                    front_shown={ *front_shown.clone() }
-                                    onclick={ on_card_click.clone() }
-                                />
-                                {
-                                    if !(*front_shown) {
-                                        html! {
-                                            <FeedbackBar
-                                                onclick={ on_feedback_click.clone() }
-                                            />
-                                        }
-                                    } else {
-                                        html! {}
-                                    }
-                                }
-                            </>
-                        },
-                        None => html!{
-                            <Redirect<AppRoute> to={AppRoute::DeckDetail { deck_id: *deck_id }}/>
-                        },
+    if let Some(card_queue) = (*card_queue).clone() {
+        match (*card_queue).last() {
+            Some(c) => html! {
+                <div
+                    class={
+                        classes!(
+                            "h-[60vh]", "flex", "flex-col", "justify-center", "items-center",
+                            "text-3xl", "portrait:text-4xl"
+                        )
                     }
-                } else {
-                    html! {}
-                }
-            }
-        </div>
+                >
+                    <RevisionCardDisplay
+                        card={ c.clone() }
+                        front_shown={ *front_shown.clone() }
+                        onclick={ on_card_click.clone() }
+                    />
+                    {
+                        if !(*front_shown) {
+                            html! {
+                                <FeedbackBar
+                                    onclick={ on_feedback_click.clone() }
+                                />
+                            }
+                        } else {
+                            html! {}
+                        }
+                    }
+                </div>
+            },
+            None => html!{
+                // All done!
+                <Redirect<AppRoute> to={AppRoute::DeckDetail { deck_id: *deck_id }}/>
+            },
+        }
+    } else {
+        html! {}
     }
 }

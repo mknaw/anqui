@@ -4,6 +4,12 @@
 use serde::Deserialize;
 
 #[derive(Clone, PartialEq, Deserialize)]
+pub struct Deck {
+    pub id: usize,
+    pub name: String,
+}
+
+#[derive(Clone, PartialEq, Deserialize)]
 pub struct Card {
     pub id: usize,
     pub front: String,

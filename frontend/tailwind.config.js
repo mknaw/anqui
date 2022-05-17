@@ -4,6 +4,12 @@ module.exports = {
     container: {
       center: true,
     },
+    extend: {
+      colors: {
+          blk: '#0d0d0d',
+          white: '#ebe9e9',
+      },
+    },
   },
   plugins: [],
 };
