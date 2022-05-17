@@ -197,7 +197,6 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
 
         Callback::from(move |_| {
             let id = id.clone();
-            // let push_deck = push_deck.clone();
             let front_input = front_node_ref.cast::<HtmlInputElement>().unwrap();
             let back_input = back_node_ref.cast::<HtmlInputElement>().unwrap();
             let front = front_input.value();
@@ -241,19 +240,7 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
             <div class={ classes!("grid", "gap-4", "grid-cols-4", "py-4") }>
                 {
                     (*cards).clone().into_iter().map(|card| {
-                        html! {
-                            <div class={
-                                classes!(
-                                    "h-32", "flex", "flex-col", "justify-between", "items-center",
-                                    "text-l", "text-center",
-                                    "rounded-lg", "border-2", "border-gray-600",
-                                )
-                            } >
-                                <CardContent content={ card.front } />
-                                <hr class={ classes!("w-full", "border-gray-600", "border", "border-dashed") } />
-                                <CardContent content={ card.back } />
-                            </div>
-                        }
+                        html! { <CardSummary deck_id={ id.clone() } card={ card.clone() } /> }
                     }).collect::<Html>()
                 }
             </div>
@@ -271,16 +258,51 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
 }
 
 #[derive(PartialEq, Properties)]
-pub struct CardContentProps {
-    content: String,
+pub struct CardSummaryProps {
+    deck_id: usize,
+    card: Card,
 }
 
-#[function_component(CardContent)]
-fn card_content(CardContentProps { content }: &CardContentProps) -> Html {
+#[function_component(CardSummary)]
+fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
+
+    fn card_content(content: &str) -> Html {
+        html! {
+            <span class={ classes!("py-1", "h-full", "flex", "flex-col", "justify-center") }>
+                // TODO have to figure out some more dynamic way around this.
+                { truncate(content, 45) }
+            </span>
+        }
+    }
+
+    let history = use_history().unwrap();
+    let onclick = {
+        let deck_id = deck_id.clone();
+        let card_id = card.id.clone();
+        let history = history.clone();
+        Callback::from(move |_| {
+            history.push(AppRoute::CardDetail { deck_id, card_id });
+        })
+    };
+
     html! {
-        <span class={ classes!("py-1", "h-full", "flex", "flex-col", "justify-center") }>
-            { truncate(content, 45) }
-        </span>
+        <div
+            class={
+                classes!(
+                    "h-32", "flex", "flex-col", "justify-between", "items-center",
+                    "text-l", "text-center",
+                    "rounded-lg", "border-2", "border-gray-600",
+                    "cursor-pointer"
+                )
+            }
+            { onclick }
+            key={ card.id.clone() }
+            card_id={ "bar" }
+        >
+            { card_content(&card.front) }
+            <hr class={ classes!("w-full", "border-gray-600", "border", "border-dashed") } />
+            { card_content(&card.back) }
+        </div>
     }
 }
 

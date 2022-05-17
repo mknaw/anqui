@@ -7,6 +7,8 @@ use yew_router::prelude::*;
 
 #[derive(Clone, Routable, PartialEq)]
 pub enum MainRoute {
+    #[at("")]
+    RedirectToHome,
     #[at("/login/")]
     Login,
     #[at("/app/*")]
@@ -25,10 +27,13 @@ pub enum AppRoute {
     DeckDetail { id: usize },
     #[at("/app/decks/:id/revision/")]
     Revision { id: usize },
+    #[at("/app/decks/:deck_id/cards/:card_id/")]
+    CardDetail { deck_id: usize, card_id: usize },
 }
 
 pub fn main_switch(routes: &MainRoute) -> Html {
     match routes {
+        MainRoute::RedirectToHome => html! { <Redirect<AppRoute> to={AppRoute::Decks}/> },
         MainRoute::Login => html! { <Login /> },
         MainRoute::NotFound => html! {
             <>
@@ -48,6 +53,9 @@ fn app_switch(routes: &AppRoute) -> Html {
     match routes {
         AppRoute::Decks => html! { <DeckHome /> },
         AppRoute::DeckDetail { id } => html! { <DeckDetail id={ id.clone() } /> },
+        AppRoute::CardDetail { deck_id, card_id } => html! {
+            <CardDetail deck_id={ deck_id.clone() } card_id={ card_id.clone() }/>
+        },
         AppRoute::Revision { id } => html! { <Revision id={ id.clone() }/> },
     }
 }

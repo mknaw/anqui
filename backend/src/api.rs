@@ -46,10 +46,10 @@ async fn delete_deck(
     use super::schema::decks::dsl::*;
 
     let conn = pool.get().unwrap();
-    let decks_to_delete = decks
+    let target = decks
         .filter(id.eq(path.into_inner().0))
         .filter(user_id.eq(auth.get_user(&conn).id));
-    diesel::delete(decks_to_delete)
+    diesel::delete(target)
         .execute(&conn)
         .expect("Error deleting deck");
 
@@ -103,11 +103,70 @@ async fn read_cards(
     HttpResponse::Ok().json(results)
 }
 
+#[get("/{deck_id}/cards/{card_id}/")]
+async fn read_card(
+    auth: Authenticated,
+    pool: web::Data<DbPool>,
+    path: web::Path<(i32, i32)>,
+) -> impl Responder {
+    use super::schema::cards::dsl::*;
+    use super::schema::decks::dsl::{decks, user_id};
+
+    log::info!("read_card");
+    let (this_deck_id, this_card_id) = path.into_inner();
+
+    let conn = pool.get().unwrap();
+    let results: Card = cards
+        // TODO it's not really that great to get all of Deck when
+        // just want to know that it's a deck of the right `user_id`.
+        .inner_join(decks)
+        .filter(id.eq(this_card_id))
+        .filter(deck_id.eq(this_deck_id))
+        .filter(user_id.eq(auth.get_user(&conn).id))
+        .first::<(Card, Deck)>(&conn)
+        .map(|(c, _)| c)
+        .expect("Error loading cards");
+
+    HttpResponse::Ok().json(results)
+}
+
 // TODO don't love the duplication between here and NewCard, and even Card to some extent
 #[derive(Deserialize)]
 struct NewWebCard {
     front: String,
     back: String,
+}
+
+#[post("/{deck_id}/cards/{card_id}/")]
+async fn update_card(
+    auth: Authenticated,
+    pool: web::Data<DbPool>,
+    path: web::Path<(i32, i32)>,
+    payload: web::Json<NewWebCard>,
+) -> impl Responder {
+    use super::schema::cards::dsl::*;
+
+    log::info!("update_card");
+    // TODO still have to confirm this is the right user and the right deck.
+    let (this_deck_id, this_card_id) = path.into_inner();
+    let payload = payload.into_inner();
+
+    log::info!("{}", payload.back);
+
+    let conn = pool.get().unwrap();
+
+    let target = cards.filter(id.eq(this_card_id));
+    let result_count = diesel::update(target)
+        .set((
+            front.eq(payload.front),
+            back.eq(payload.back),
+        ))
+        .execute(&conn)
+        .expect("Error updating card");
+
+    log::info!("...successfully?");
+    log::info!("results: {}", result_count);
+    HttpResponse::Ok()
 }
 
 #[post("/{id}/cards/")]
@@ -128,6 +187,26 @@ async fn new_card(
         },
     );
     HttpResponse::Ok().json(card)
+}
+
+#[delete("/{deck_id}/cards/{card_id}/")]
+async fn delete_card(
+    auth: Authenticated,
+    pool: web::Data<DbPool>,
+    path: web::Path<(i32, i32)>,
+) -> impl Responder {
+    use super::schema::cards::dsl::*;
+
+    // TODO still have to confirm this is the right user and the right deck.
+    let (this_deck_id, this_card_id) = path.into_inner();
+
+    let conn = pool.get().unwrap();
+    let target = cards.filter(id.eq(this_card_id));
+    diesel::delete(target)
+        .execute(&conn)
+        .expect("Error deleting card");
+
+    HttpResponse::Ok()
 }
 
 #[post("/cards/{id}/feedback/")]

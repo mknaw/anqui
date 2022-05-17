@@ -561,6 +561,10 @@ Ensure the default browser behavior of the `hidden` attribute.
   max-width: 42rem;
 }
 
+.cursor-pointer {
+  cursor: pointer;
+}
+
 .grid-cols-4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
@@ -593,6 +597,10 @@ Ensure the default browser behavior of the `hidden` attribute.
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.text-ellipsis {
+  text-overflow: ellipsis;
 }
 
 .rounded-lg {
@@ -659,7 +667,7 @@ Ensure the default browser behavior of the `hidden` attribute.
   line-height: 2.5rem;
 }
 
-.text-slate-700 {
+.text-gray-600 {
   --tw-text-opacity: 1;
-  color: rgb(51 65 85 / var(--tw-text-opacity));
+  color: rgb(75 85 99 / var(--tw-text-opacity));
 }
