@@ -4,10 +4,9 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use crate::api::{delete, get, post};
+use crate::api::{delete, get, post, Page};
 use crate::cards::Card;
 use crate::routes::AppRoute;
-use crate::utils::truncate;
 
 #[derive(Clone, PartialEq, Deserialize)]
 pub struct Deck {
@@ -48,10 +47,9 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
             let hidden = hidden.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 let url = format!("/api/decks/{}/", deck.id);
-                match delete(&url).await {
-                    Ok(_) => hidden.set(true),
-                    Err(_) => (), // TODO probably should do... something...
-                }
+                if delete(&url).await.is_ok() {
+                    hidden.set(true);
+                };
             });
         })
     };
@@ -102,12 +100,9 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
                 }
                 wasm_bindgen_futures::spawn_local(async move {
                     let payload = json!({ "name": name });
-                    match post("/api/decks/", payload).await {
-                        Ok::<Deck, _>(new_deck) => {
-                            push_deck.emit(new_deck);
-                            input.set_value("");
-                        }
-                        _ => (),
+                    if let Ok::<Deck, _>(new_deck) = post("/api/decks/", payload).await {
+                        push_deck.emit(new_deck);
+                        input.set_value("");
                     }
                 });
             };
@@ -138,25 +133,29 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
     let front_node_ref = use_node_ref();
     let back_node_ref = use_node_ref();
 
+    let page_number = use_state(|| 0);
+
     let cards = use_state(std::vec::Vec::new);
+    let has_more = use_state(|| false);
     {
         let cards = cards.clone();
+        let has_more = has_more.clone();
+        let this_page_number = *page_number;
+        let page_number = page_number.clone();
         let id = *id;
         use_effect_with_deps(
             move |_| {
                 let cards = cards.clone();
                 wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!("/api/decks/{}/cards/", id);
-                    match get(&url).await {
-                        Ok::<Vec<Card>, _>(fetched_cards) => {
-                            cards.set(fetched_cards);
-                        }
-                        _ => (),
+                    let url = format!("/api/decks/{}/cards/?page={}", id, this_page_number);
+                    if let Ok::<Page<Card>, _>(page) = get(&url).await {
+                        cards.set(page.results);
+                        has_more.set(page.has_more);
                     }
                 });
                 || ()
             },
-            (),
+            page_number,
         );
     }
 
@@ -169,11 +168,8 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
                 let deck = deck.clone();
                 wasm_bindgen_futures::spawn_local(async move {
                     let url = format!("/api/decks/{}/", id);
-                    match get(&url).await {
-                        Ok::<Deck, _>(fetched_deck) => {
-                            deck.set(Some(fetched_deck));
-                        }
-                        _ => (),
+                    if let Ok::<Deck, _>(fetched_deck) = get(&url).await {
+                        deck.set(Some(fetched_deck));
                     }
                 });
                 || ()
@@ -181,6 +177,22 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
             (),
         );
     }
+
+    let on_previous_click = {
+        let old_page_number = *page_number;
+        let page_number = page_number.clone();
+        Callback::from(move |_| {
+            page_number.set(std::cmp::max(old_page_number - 1, 0));
+        })
+    };
+
+    let on_next_click = {
+        let old_page_number = *page_number;
+        let page_number = page_number.clone();
+        Callback::from(move |_| {
+            page_number.set(old_page_number + 1);
+        })
+    };
 
     let history = use_history().unwrap();
     let on_revise_click = {
@@ -209,26 +221,23 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
             wasm_bindgen_futures::spawn_local(async move {
                 let url = format!("/api/decks/{}/cards/", id);
                 let payload = json!({ "front": front, "back": back });
-                match post(&url, payload).await {
-                    Ok::<Card, _>(card) => {
-                        front_input.set_value("");
-                        back_input.set_value("");
-                        let mut card_vec = (*cards).clone();
-                        card_vec.push(card);
-                        cards.set(card_vec);
-                    }
-                    _ => (),
+                if let Ok::<Card, _>(card) = post(&url, payload).await {
+                    front_input.set_value("");
+                    back_input.set_value("");
+                    let mut card_vec = (*cards).clone();
+                    card_vec.push(card);
+                    cards.set(card_vec);
                 }
             });
         })
     };
 
     html! {
-        <div class={ classes!("container", "max-w-4xl", "h-full") }>
+        <>
             {
                 if let Some(deck) = (*deck).clone() {
                     html! {
-                        <h1 class={ classes!("text-4xl", "text-center", "py-2") }>
+                        <h1 class={ classes!("text-4xl", "text-center", "py-5") }>
                             <span onclick={ on_revise_click.clone() }>{ "🛎️ " }</span>
                             <span>{ deck.name }</span>
                         </h1>
@@ -237,23 +246,60 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
                     html! {}
                 }
             }
-            <div class={ classes!("grid", "gap-4", "grid-cols-4", "py-4") }>
-                {
-                    (*cards).clone().into_iter().map(|card| {
-                        html! { <CardSummary deck_id={ *id } card={ card.clone() } /> }
-                    }).collect::<Html>()
-                }
-            </div>
-            <div>
-                <button onclick={ on_add_click }>
-                    { "✏️" }
-                </button>
-                <div>
-                    <input ref={ front_node_ref } placeholder="de face" />
-                    <input ref={ back_node_ref } placeholder="arrière" />
+            <div class={ classes!("container", "h-full") }>
+                <div class={ classes!("flex", "flex-row", "items-center", "justify-center", "h-full") }>
+                    <div
+                        class={
+                            classes!(
+                                "text-3xl", "px-5",
+                                if *page_number > 0 {"visible"} else {"invisible"},
+                            )
+                        }
+                    >
+                        <button onclick={ on_previous_click }>
+                            { "⬅️" }
+                        </button>
+                    </div>
+                    <div
+                        class={
+                            classes!(
+                                "max-w-4xl", "w-full", "py-4",
+                                "grid", "gap-4", "grid-cols-3", "md:grid-cols-4", "lg:grid-cols-5",
+                            )
+                        }
+                    >
+                        {
+                            // TODO think the solution to resizable grids is capping this iteration
+                            // at some number divisible by grid rows.
+                            (*cards).clone().into_iter().map(|card| {
+                                html! { <CardSummary deck_id={ *id } card={ card.clone() } /> }
+                            }).collect::<Html>()
+                        }
+                    </div>
+                    <div
+                        class={
+                            classes!(
+                                "text-3xl", "px-5",
+                                if *has_more {"visible"} else {"invisible"},
+                            )
+                        }
+                    >
+                        <button onclick={ on_next_click }>
+                            { "➡️" }
+                        </button>
+                    </div>
+                </div>
+                <div hidden={ true }>
+                    <button onclick={ on_add_click }>
+                        { "✏️" }
+                    </button>
+                    <div>
+                        <input ref={ front_node_ref } placeholder="de face" />
+                        <input ref={ back_node_ref } placeholder="arrière" />
+                    </div>
                 </div>
             </div>
-        </div>
+        </>
     }
 }
 
@@ -267,9 +313,9 @@ pub struct CardSummaryProps {
 fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
     fn card_content(content: &str) -> Html {
         html! {
-            <span class={ classes!("py-1", "h-full", "flex", "flex-col", "justify-center") }>
+            <span class={ classes!("p-1", "h-full", "overflow-hidden", "flex-col", "justify-center") }>
                 // TODO have to figure out some more dynamic way around this.
-                { truncate(content, 45) }
+                { content }
             </span>
         }
     }
@@ -313,11 +359,8 @@ pub fn deck_home() -> Html {
         use_effect_with_deps(
             move |_| {
                 wasm_bindgen_futures::spawn_local(async move {
-                    match get("/api/decks/").await {
-                        Ok::<Vec<Deck>, _>(fetched_decks) => {
-                            decks.set(fetched_decks);
-                        }
-                        _ => (),
+                    if let Ok::<Vec<Deck>, _>(fetched_decks) = get("/api/decks/").await {
+                        decks.set(fetched_decks);
                     }
                 });
                 || ()

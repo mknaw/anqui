@@ -126,9 +126,8 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
                 let card_queue = card_queue.clone();
                 wasm_bindgen_futures::spawn_local(async move {
                     let url = format!("/api/decks/{}/cards/", id);
-                    match get(&url).await {
-                        Ok::<Vec<Card>, _>(fetched_cards) => card_queue.set(Some(fetched_cards)),
-                        Err(_) => (),
+                    if let Ok::<Vec<Card>, _>(fetched_cards) = get(&url).await {
+                        card_queue.set(Some(fetched_cards));
                     };
                 });
                 || ()
@@ -161,10 +160,7 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
                     wasm_bindgen_futures::spawn_local(async move {
                         let url = format!("/api/cards/{}/feedback/", card.id);
                         let payload = serde_json::Value::String(label_feedback(&feedback));
-                        match post_vanilla(&url, payload).await {
-                            Ok(_) => (),
-                            Err(_) => (),
-                        };
+                        post_vanilla(&url, payload).await.ok();
                     });
                 }
             })
@@ -230,12 +226,9 @@ pub fn card_detail(CardDetailProps { deck_id, card_id }: &CardDetailProps) -> Ht
         use_effect_with_deps(
             move |_| {
                 wasm_bindgen_futures::spawn_local(async move {
-                    match get(&api_url).await {
-                        Ok::<Card, _>(fetched_card) => {
-                            front.set(fetched_card.front);
-                            back.set(fetched_card.back);
-                        }
-                        _ => (),
+                    if let Ok::<Card, _>(fetched_card) = get(&api_url).await {
+                        front.set(fetched_card.front);
+                        back.set(fetched_card.back);
                     }
                 });
                 || ()
@@ -280,10 +273,9 @@ pub fn card_detail(CardDetailProps { deck_id, card_id }: &CardDetailProps) -> Ht
             });
             wasm_bindgen_futures::spawn_local(async move {
                 let api_url = api_url.clone();
-                match post_vanilla(&api_url, payload).await {
-                    Ok(_) => history.push(AppRoute::DeckDetail { id: deck_id }),
-                    Err(_) => (), // TODO
-                }
+                if post_vanilla(&api_url, payload).await.is_ok() {
+                    history.push(AppRoute::DeckDetail { id: deck_id });
+                } // TODO else ...
             });
         })
     };
@@ -296,10 +288,9 @@ pub fn card_detail(CardDetailProps { deck_id, card_id }: &CardDetailProps) -> Ht
             let api_url = api_url.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 let api_url = api_url.clone();
-                match delete(&api_url).await {
-                    Ok(_) => history.push(AppRoute::DeckDetail { id: deck_id }),
-                    Err(_) => (), // TODO
-                }
+                if delete(&api_url).await.is_ok() {
+                    history.push(AppRoute::DeckDetail { id: deck_id });
+                } // TODO else ...
             });
         })
     };

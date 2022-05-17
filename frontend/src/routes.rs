@@ -1,9 +1,10 @@
+use yew::prelude::*;
+use yew_router::prelude::*;
+
 use crate::cards::*;
 use crate::decks::*;
 use crate::login::*;
 use crate::Layout;
-use yew::prelude::*;
-use yew_router::prelude::*;
 
 #[derive(Clone, Routable, PartialEq)]
 pub enum MainRoute {

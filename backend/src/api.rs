@@ -1,9 +1,23 @@
+use actix_web::{delete, get, post, web, HttpResponse, Responder};
+use serde::Deserialize;
+
 use super::auth::Authenticated;
 use super::db::*;
 use super::diesel::prelude::*;
 use super::models::*;
-use actix_web::{delete, get, post, web, HttpResponse, Responder};
-use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct PageQuery {
+    #[serde(default)]
+    page: i64,
+    #[serde(default = "default_per_page")]
+    per_page: i64,
+}
+
+fn default_per_page() -> i64 {
+    // TODO should come from some (variable) constant?
+    20
+}
 
 #[get("/")]
 async fn read_decks(auth: Authenticated, pool: web::Data<DbPool>) -> impl Responder {
@@ -81,6 +95,7 @@ async fn read_cards(
     auth: Authenticated,
     pool: web::Data<DbPool>,
     path: web::Path<(i32,)>,
+    query: web::Query<PageQuery>,
 ) -> impl Responder {
     use super::schema::cards::dsl::*;
     use super::schema::decks::dsl::{decks, user_id};
@@ -88,20 +103,17 @@ async fn read_cards(
     log::info!("read_cards");
 
     let conn = pool.get().unwrap();
-    let results: Vec<Card> = cards
-        // TODO it's not really that great to get all of Deck when
-        // just want to know that it's a deck of the right `user_id`.
+
+    let page: Page<Card> = cards
         .inner_join(decks)
         .filter(deck_id.eq(path.into_inner().0))
         .filter(user_id.eq(auth.get_user(&conn).id))
-        .limit(20) // TODO limit responsive to screensize?
-        .load(&conn)
-        .expect("Error loading cards")
-        .into_iter()
-        .map(|(c, _): (Card, Deck)| c)
-        .collect();
+        .select(cards::all_columns())
+        .paginate(query.page, query.per_page)
+        .load_and_count_pages(&conn)
+        .expect("Error loading cards");
 
-    HttpResponse::Ok().json(results)
+    HttpResponse::Ok().json(page)
 }
 
 #[get("/{deck_id}/cards/{card_id}/")]
@@ -118,15 +130,13 @@ async fn read_card(
 
     let conn = pool.get().unwrap();
     let results: Card = cards
-        // TODO it's not really that great to get all of Deck when
-        // just want to know that it's a deck of the right `user_id`.
         .inner_join(decks)
         .filter(id.eq(this_card_id))
         .filter(deck_id.eq(this_deck_id))
         .filter(user_id.eq(auth.get_user(&conn).id))
-        .first::<(Card, Deck)>(&conn)
-        .map(|(c, _)| c)
-        .expect("Error loading cards");
+        .select(cards::all_columns())
+        .first::<Card>(&conn)
+        .unwrap();
 
     HttpResponse::Ok().json(results)
 }

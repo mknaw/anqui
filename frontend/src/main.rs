@@ -1,13 +1,13 @@
-use crate::routes::*;
 use yew::prelude::*;
 use yew_router::prelude::*;
+
+use crate::routes::*;
 
 mod api;
 mod cards;
 mod decks;
 mod login;
 mod routes;
-mod utils;
 
 #[derive(PartialEq, Properties)]
 pub struct LayoutProps {
@@ -17,8 +17,15 @@ pub struct LayoutProps {
 #[function_component(Layout)]
 pub fn layout(LayoutProps { children }: &LayoutProps) -> Html {
     html! {
-        <div class={ classes!("w-full", "h-screen", "max-h-screen", "flex", "flex-col", "overflow-hidden") }>
-            <nav class={ classes!("w-full", "text-3xl", "flex", "justify-end", "p-3") }>
+        <div
+            class={
+                classes!(
+                    "w-full", "h-screen", "max-h-screen",
+                    "flex", "flex-col", "justify-between", "items-center",
+                )
+            }
+        >
+            <nav class={ classes!("absolute",  "right-0", "text-3xl", "flex", "justify-end", "p-5") }>
                 <span class={ classes!("px-2") }>
                     <Link<AppRoute> to={ AppRoute::Decks }>{ "🏡" }</Link<AppRoute>>
                 </span>

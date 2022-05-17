@@ -4,6 +4,8 @@ extern crate backend;
 extern crate bcrypt;
 extern crate diesel;
 
+use std::env;
+
 use actix_files::{Files, NamedFile};
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{http, middleware::ErrorHandlers, web, App, HttpServer, Responder};
@@ -11,7 +13,6 @@ use backend::api::*;
 use backend::auth::*;
 use backend::db::new_db_pool;
 use dotenv::dotenv;
-use std::env;
 
 async fn index(_auth: Authenticated, _data: web::Path<()>) -> impl Responder {
     // Need to "default" serve `index.html` from every random URL to play nice with Yew routes.
@@ -36,7 +37,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(
                 ErrorHandlers::new().handler(http::StatusCode::UNAUTHORIZED, redirect_on_autherror),
             )
-            .wrap(AuthenticateMiddlewareFactory::new())
+            .wrap(AuthenticateMiddlewareFactory::default())
             .wrap(IdentityService::new(policy))
             .service(
                 web::scope("/api")

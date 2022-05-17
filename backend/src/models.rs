@@ -1,10 +1,12 @@
-use super::schema::*;
-use super::*;
+use std::cmp::{max, min};
+
 use chrono::prelude::*;
 use chrono::Duration;
 use rand::{distributions::Alphanumeric, Rng};
 use serde::{Deserialize, Serialize};
-use std::cmp::{max, min};
+
+use super::schema::*;
+use super::*;
 
 #[derive(Identifiable, Queryable)]
 #[table_name = "users"]
@@ -75,6 +77,11 @@ pub struct Deck {
 }
 
 impl Deck {
+    pub fn get_by_id(conn: &PgConnection, this_id: i32) -> Option<Deck> {
+        use super::schema::decks::dsl::*;
+        decks.filter(id.eq(this_id)).first(conn).ok()
+    }
+
     pub fn create(conn: &PgConnection, new_deck: NewDeck) -> Deck {
         diesel::insert_into(decks::table)
             .values(&new_deck)

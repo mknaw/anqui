@@ -1,6 +1,5 @@
-use super::db::DbPool;
-use super::diesel::prelude::*;
-use crate::models::{Session, User};
+use std::rc::Rc;
+
 use actix_files::NamedFile;
 use actix_identity::{Identity, RequestIdentity};
 use actix_web::{
@@ -16,7 +15,10 @@ use diesel::pg::PgConnection;
 use futures::future::{ready, Ready};
 use futures_util::future::{FutureExt, LocalBoxFuture};
 use serde::Deserialize;
-use std::rc::Rc;
+
+use super::db::DbPool;
+use super::diesel::prelude::*;
+use crate::models::{Session, User};
 
 #[derive(Debug, Display, Error)]
 #[display(fmt = "auth error")]
@@ -34,7 +36,7 @@ pub struct AuthData {
 pub type AuthenticationInfo = Rc<AuthData>;
 
 pub struct AuthenticateMiddleware<S> {
-    auth_data: Option<Rc<AuthData>>,
+    _auth_data: Option<Rc<AuthData>>, // TODO do I need this?
     service: Rc<S>,
 }
 
@@ -84,6 +86,12 @@ impl AuthenticateMiddlewareFactory {
     }
 }
 
+impl Default for AuthenticateMiddlewareFactory {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<S, B> Transform<S, ServiceRequest> for AuthenticateMiddlewareFactory
 where
     S: Service<ServiceRequest, Response = ServiceResponse<B>, Error = Error> + 'static,
@@ -96,7 +104,7 @@ where
 
     fn new_transform(&self, service: S) -> Self::Future {
         ready(Ok(AuthenticateMiddleware {
-            auth_data: self.auth_data.clone(),
+            _auth_data: self.auth_data.clone(),
             service: Rc::new(service),
         }))
     }

@@ -1,6 +1,8 @@
 use core::fmt;
+
 use reqwasm::{http::Request, http::Response, Error};
 use serde::de::DeserializeOwned;
+use serde::Deserialize;
 use serde_json::Value;
 
 #[derive(Debug)]
@@ -64,4 +66,12 @@ pub async fn post<T: DeserializeOwned>(url: &str, payload: Value) -> Result<T, A
 
 pub async fn delete(url: &str) -> Result<Response, ApiError> {
     handle_request(Request::delete(url)).await
+}
+
+// TODO should move to a `common` crate between here and `backend`.
+#[derive(Deserialize)]
+pub struct Page<T> {
+    pub results: Vec<T>,
+    pub page_count: i64,
+    pub has_more: bool,
 }
