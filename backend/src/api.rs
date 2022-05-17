@@ -45,11 +45,15 @@ async fn new_deck(
     pool: web::Data<DbPool>,
     new_deck: web::Json<DeckPayload>,
 ) -> impl Responder {
-    use common::schema::decks::dsl::*;
+    use common::schema::decks;
 
     let conn = pool.get().unwrap();
-    let deck = diesel::insert_into(decks)
-        .values((name.eq(&new_deck.name), user_id.eq(auth.get_user(&conn).id)))
+    let name = new_deck.name.trim();
+    let deck = diesel::insert_into(decks::table)
+        .values((
+            decks::name.eq(name),
+            decks::user_id.eq(auth.get_user(&conn).id),
+        ))
         .get_result::<Deck>(&conn)
         .unwrap();
     HttpResponse::Ok().json(deck)
@@ -176,7 +180,11 @@ async fn update_card(
             AND decks.id = {}
             AND decks.user_id = {};
     "#,
-        payload.front, payload.back, card_id, deck_id, user_id
+        payload.front.trim(),
+        payload.back.trim(),
+        card_id,
+        deck_id,
+        user_id
     );
     sql_query(update_query).execute(&conn).unwrap();
 

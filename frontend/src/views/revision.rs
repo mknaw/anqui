@@ -13,7 +13,8 @@ pub struct RevisionProps {
 
 #[function_component(Revision)]
 pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
-    let card_queue: UseStateHandle<Option<Vec<Card>>> = use_state(|| None);
+    let card_queue = use_state(|| None);
+    let revision_length = use_state(|| 0);
     let front_shown = use_state(|| true);
 
     let ctx = use_context::<AppContext>().unwrap();
@@ -26,6 +27,7 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
 
     {
         let card_queue = card_queue.clone();
+        let revision_length = revision_length.clone();
         let deck_id = *deck_id;
         use_effect_with_deps(
             move |_| {
@@ -33,6 +35,7 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
                 wasm_bindgen_futures::spawn_local(async move {
                     let url = format!("/api/decks/{}/revision/", deck_id);
                     if let Ok::<Vec<Card>, _>(fetched_cards) = api::get(&url).await {
+                        revision_length.set(fetched_cards.len());
                         card_queue.set(Some(fetched_cards));
                     };
                 });
@@ -76,21 +79,26 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
     };
 
     if let Some(card_queue) = (*card_queue).clone() {
+        let queue_length = (*card_queue).len();
+        let card_count = *revision_length - queue_length + 1;
+        let card_count_display = format!("{} / {}", card_count, *revision_length);
         match (*card_queue).last() {
             Some(c) => html! {
                 <div
                     class={
                         classes!(
-                            "h-[60vh]", "flex", "flex-col", "justify-center", "items-center",
-                            "text-3xl", "portrait:text-4xl"
+                            "h-full", "flex", "flex-col", "justify-center", "items-center",
+                            "text-3xl", "portrait:text-6xl"
                         )
                     }
                 >
-                    <RevisionCardDisplay
-                        card={ c.clone() }
-                        front_shown={ *front_shown.clone() }
-                        onclick={ on_card_click.clone() }
-                    />
+                    <div class={ classes!("h-[40vh]", "flex", "items-end") }>
+                        <RevisionCardDisplay
+                            card={ c.clone() }
+                            front_shown={ *front_shown.clone() }
+                            onclick={ on_card_click.clone() }
+                        />
+                    </div>
                     {
                         if !(*front_shown) {
                             html! {
@@ -102,6 +110,9 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
                             html! {}
                         }
                     }
+                    <div class={ classes!("absolute", "bottom-10") }>
+                        { card_count_display }
+                    </div>
                 </div>
             },
             None => html! {
@@ -124,7 +135,11 @@ struct RevisionCardDisplayProps {
 // TODO probably should pull out a common component to use here and in the card list.
 #[function_component(RevisionCardDisplay)]
 fn revision_card(props: &RevisionCardDisplayProps) -> Html {
-    let cursor = props.front_shown.then(|| "cursor-pointer");
+    let cursor = if props.front_shown {
+        "cursor-pointer"
+    } else {
+        "cursor-default"
+    };
 
     let onclick = {
         let onclick = props.onclick.clone();
@@ -133,11 +148,12 @@ fn revision_card(props: &RevisionCardDisplayProps) -> Html {
 
     html! {
         <div class={ classes!("flex", "flex-col", "items-center", cursor) }>
-            <div { onclick }>{ &props.card.front }</div>
+            <div { onclick } class={ "text-center mb-10" }>{ &props.card.front }</div>
             {
                 if !props.front_shown {
                     html! {
-                        <div>{ &props.card.back }</div>
+                        // TODO this should always take up a fixed height.
+                        <div class={ "text-center mb-10" }>{ &props.card.back }</div>
                     }
                 } else {
                     html! {}
@@ -179,13 +195,7 @@ fn feedback_bar(FeedbackBarProps { onclick }: &FeedbackBarProps) -> Html {
     ];
 
     html! {
-        <div
-            class={
-                classes!(
-                    "flex", "flex-row", "mt-5"
-                )
-            }
-        >
+        <div class={ classes!("flex", "flex-row") }>
             {
                 feedbacks.into_iter().map(|feedback| {
                     html!{
@@ -222,16 +232,16 @@ fn feedback_button(props: &FeedbackButtonProps) -> Html {
     };
 
     html! {
-        <div
+        <button
+            onclick={ on_feedback_click }
             class={
                 classes!(
-                    "flex", "justify-center", "w-32", "px-5", color,
+                    "flex", "justify-center", "w-32", "portrait:w-48", "p-5", "mx-5", color,
+                    "rounded-lg"
                 )
             }
         >
-            <button onclick={ on_feedback_click }>
-                { label_feedback(&props.feedback) }
-            </button>
-        </div>
+            { label_feedback(&props.feedback) }
+        </button>
     }
 }

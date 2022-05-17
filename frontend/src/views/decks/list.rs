@@ -74,11 +74,10 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
     let deck_id = deck.id;
     html! {
         <div key={ deck.id } hidden={ *hidden } class={ classes!("py-2") }>
-            <span class={ classes!("px-2") }>
-                <span onclick={ on_delete }>
-                    { emojis::AXE }
-                </span>
-            </span>
+            <button onclick={ on_delete } class={ classes!("px-2") }>
+                { emojis::AXE }
+            </button>
+            // TODO these should probably just be buttons as well
             <span class={ classes!("px-2") }>
                 <Link<AppRoute> to={ AppRoute::Revision { deck_id } }>
                     { emojis::BELL }

@@ -80,7 +80,8 @@ pub fn deck_detail(DeckDetailProps { deck_id }: &DeckDetailProps) -> Html {
                 return;
             }
             let el = e.target().unwrap().unchecked_into::<Element>();
-            if el.scroll_top() + el.client_height() >= el.scroll_height() {
+            // TODO adding 5 arbitrarily still seems kind of flimsy.
+            if el.scroll_top() + el.client_height() + 5 >= el.scroll_height() {
                 page_number.set(old_page_number + 1);
             };
         })

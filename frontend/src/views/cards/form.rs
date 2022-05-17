@@ -108,7 +108,7 @@ pub fn card_form(CardFormProps { deck_id, card_id }: &CardFormProps) -> Html {
     });
 
     html! {
-        <div>
+        <div class={ classes!("h-[60vh]", "flex", "items-center") }>
             <form { onsubmit } class={ classes!("flex", "flex-col", "text-3xl", "portrait:text-6xl") }>
                 <textarea
                     value={ (*front).clone() }
