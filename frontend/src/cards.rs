@@ -1,5 +1,5 @@
 use crate::api::{get, post_vanilla};
-use crate::Route;
+use crate::AppRoute;
 use serde::Deserialize;
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -31,7 +31,7 @@ fn cards(props: &CardDisplayProps) -> Html {
     };
 
     html! {
-        <div id={ "card_display" } class={ "bordered" }>
+        <div>
             <div onclick={ foo }>{ display }</div>
         </div>
     }
@@ -69,7 +69,7 @@ fn feedback_bar(FeedbackBarProps { onclick }: &FeedbackBarProps) -> Html {
     ];
 
     html! {
-        <div id="feedback">
+        <div>
             {
                 feedbacks.into_iter().map(|feedback| {
                     html!{
@@ -99,7 +99,7 @@ fn feedback_button(props: &FeedbackButtonProps) -> Html {
     };
 
     html! {
-        <button class={ "feedback-btn bordered" } onclick={ on_feedback_click }>
+        <button onclick={ on_feedback_click }>
             { label_feedback(&props.feedback) }
         </button>
     }
@@ -118,18 +118,20 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
     {
         let card_queue = card_queue.clone();
         let id = id.clone();
-        use_effect_with_deps(move |_| {
-            let card_queue = card_queue.clone();
-            wasm_bindgen_futures::spawn_local(async move {
-                let url = format!("/api/decks/{}/cards/", id);
-                match get(&url).await {
-                    Ok::<Vec<Card>, _>(fetched_cards) => card_queue.set(Some(fetched_cards)),
-                    Err(_) => (),
-                };
-            });
-            || ()
-        },
-        ());
+        use_effect_with_deps(
+            move |_| {
+                let card_queue = card_queue.clone();
+                wasm_bindgen_futures::spawn_local(async move {
+                    let url = format!("/api/decks/{}/cards/", id);
+                    match get(&url).await {
+                        Ok::<Vec<Card>, _>(fetched_cards) => card_queue.set(Some(fetched_cards)),
+                        Err(_) => (),
+                    };
+                });
+                || ()
+            },
+            (),
+        );
     }
 
     let on_card_click = {
@@ -168,7 +170,7 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
     };
 
     html! {
-        <div id={ "revision" }>
+        <div>
             {
                 if let Some(card_queue) = (*card_queue).clone() {
                     match (*card_queue).last() {
@@ -193,7 +195,7 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
                             </>
                         },
                         None => html!{
-                            <Redirect<Route> to={Route::DeckDetail { id: id.clone() }}/>
+                            <Redirect<AppRoute> to={AppRoute::DeckDetail { id: id.clone() }}/>
                         },
                     }
                 } else {

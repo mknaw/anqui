@@ -54,7 +54,7 @@ async fn main() -> std::io::Result<()> {
             )
             .service(login_get)
             .service(login)
-            .service(logoff)
+            .service(logout)
             .service(Files::new("/static/", "frontend/dist/").index_file("index.html"))
             .default_service(web::get().to(index))
     })

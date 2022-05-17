@@ -179,17 +179,17 @@ async fn login(
             req_id.remember(session.token.clone());
             return HttpResponse::Ok().finish();
         } else {
-            err_message = "Invalid password.".to_string();
+            err_message = "Mot de passe invalide".to_string();
         }
     } else {
-        err_message = "Invalid username.".to_string();
+        err_message = "Nom d'utilisateur invalide".to_string();
     }
     req_id.forget();
     HttpResponse::Forbidden().body(err_message.to_owned())
 }
 
-#[get("/logoff/")]
-async fn logoff(id: Identity) -> impl Responder {
+#[get("/logout/")]
+async fn logout(id: Identity) -> impl Responder {
     id.forget();
     HttpResponse::SeeOther()
         .insert_header((header::LOCATION, "/login/"))

@@ -1,3 +1,4 @@
+// TODO move color vars to tailwind config.
 $my-black: #000000f2
 $my-white: #ebe9e9
 
@@ -7,7 +8,6 @@ body,
 input,
 button
   font-family: 'Rubik', Arial, Helvetica, sans-serif
-  font-size: xx-large
   color: $my-white
 
 input,
@@ -18,79 +18,5 @@ button
 input
   border-bottom: 2px solid $my-white
 
-button:hover
-  cursor: pointer
-
-a
-  text-decoration: none
-  color: $my-white
-
 body
-  font-size: xx-large
   background-color: $my-black
-  font-family: 'Rubik', Arial, Helvetica, sans-serif
-  height: 100vh
-  display: flex
-  flex-flow: column
-  justify-content: center
-  align-items: center
-
-.hidden
-  display: none
-
-#content
-  display: flex
-  flex-flow: column
-  margin-bottom: 12em
-  width: 75%
-
-#card_display
-  display: flex
-  flex-flow: column
-  align-items: center
-  margin-bottom: 1em
-
-.bordered
-  border: 1px solid white
-  padding: 1.5em
-
-#feedback
-  display: flex
-
-.feedback-btn
-  width: 25%
-  display: flex
-  justify-content: center
-  align-items: center
-
-  &.front
-    display: none
-
-td
-  padding: 0.1em 0.2em
-
-.emoji
-  // not really emoji specific but just a standin for now
-  width: 0
-
-  span
-    cursor: pointer
-
-.input-and-button-container
-  display: flex
-  flex-flow: row nowrap
-  align-items: center
-  width: 100%
-  margin-top: 0.5em
-
-  *
-    padding: 0.1em 0.25em
-
-  input
-    width: 100%
-
-  button
-    height: 1em
-
-td.back
-  text-align: right

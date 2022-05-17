@@ -168,7 +168,7 @@ async fn get_revision_cards(
         .order_by(diesel::dsl::sql::<i32>("random() ^ revision_weight"))
         .select(id)
         // TODO would be nice to take this from a user preference.
-        .limit(25)
+        .limit(5)
         .load::<i32>(&conn)
         .expect("Error loading cards");
 
