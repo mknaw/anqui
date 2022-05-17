@@ -23,8 +23,6 @@ fn default_per_page() -> i64 {
 async fn read_decks(auth: Authenticated, pool: web::Data<DbPool>) -> impl Responder {
     use super::schema::decks::dsl::*;
 
-    log::info!("read_decks");
-
     let conn = pool.get().unwrap();
     let results = decks
         .filter(user_id.eq(auth.get_user(&conn).id))
@@ -78,8 +76,6 @@ async fn read_deck(
 ) -> impl Responder {
     use super::schema::decks::dsl::*;
 
-    log::info!("read_deck");
-
     let conn = pool.get().unwrap();
     let deck = decks
         .filter(id.eq(path.into_inner().0))
@@ -99,8 +95,6 @@ async fn read_cards(
 ) -> impl Responder {
     use super::schema::cards::dsl::*;
     use super::schema::decks::dsl::{decks, user_id};
-
-    log::info!("read_cards");
 
     let conn = pool.get().unwrap();
 
@@ -125,7 +119,6 @@ async fn read_card(
     use super::schema::cards::dsl::*;
     use super::schema::decks::dsl::{decks, user_id};
 
-    log::info!("read_card");
     let (this_deck_id, this_card_id) = path.into_inner();
 
     let conn = pool.get().unwrap();
@@ -157,12 +150,9 @@ async fn update_card(
 ) -> impl Responder {
     use super::schema::cards::dsl::*;
 
-    log::info!("update_card");
     // TODO still have to confirm this is the right user and the right deck.
     let (_this_deck_id, this_card_id) = path.into_inner();
     let payload = payload.into_inner();
-
-    log::info!("{}", payload.back);
 
     let conn = pool.get().unwrap();
 
@@ -172,8 +162,6 @@ async fn update_card(
         .execute(&conn)
         .expect("Error updating card");
 
-    log::info!("...successfully?");
-    log::info!("results: {}", result_count);
     HttpResponse::Ok()
 }
 

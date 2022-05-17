@@ -5,8 +5,8 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::api::{delete, get, post, Page};
-use crate::cards::Card;
 use crate::emojis;
+use crate::models::Card;
 use crate::routes::AppRoute;
 
 #[derive(Clone, PartialEq, Deserialize)]
@@ -41,7 +41,7 @@ pub struct DeckListRowProps {
 #[function_component(DeckListRow)]
 fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
     let hidden = use_state(|| false);
-    let delete_deck = {
+    let on_delete = {
         let hidden = hidden.clone();
         let deck = deck.clone();
         Callback::from(move |_| {
@@ -54,21 +54,21 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
             });
         })
     };
-    let hidden_class = if *hidden { "hidden" } else { "" };
+    let deck_id = deck.id;
     html! {
-        <div key={ deck.id } class={ classes!("py-2", hidden_class) }>
+        <div key={ deck.id } hidden={ *hidden } class={ classes!("py-2") }>
             <span class={ classes!("px-2") }>
-                <span onclick={ delete_deck }>
+                <span onclick={ on_delete }>
                     { emojis::AXE }
                 </span>
             </span>
             <span class={ classes!("px-2") }>
-                <Link<AppRoute> to={ AppRoute::Revision { id: deck.id } }>
+                <Link<AppRoute> to={ AppRoute::Revision { deck_id } }>
                     { emojis::BELL }
                 </Link<AppRoute>>
             </span>
             <span class={ classes!("px-2") }>
-                <Link<AppRoute> to={ AppRoute::DeckDetail { id: deck.id } }>
+                <Link<AppRoute> to={ AppRoute::DeckDetail { deck_id } }>
                     { &deck.name }
                 </Link<AppRoute>>
             </span>
@@ -77,15 +77,15 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
 }
 
 #[derive(PartialEq, Properties)]
-pub struct DeckAddProps {
+pub struct DeckCreateProps {
     push_deck: Callback<Deck>,
 }
 
 #[function_component(DeckAdd)]
-pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
+pub fn deck_create(DeckCreateProps { push_deck }: &DeckCreateProps) -> Html {
     let input_node_ref = use_node_ref();
 
-    let on_add_click = {
+    let on_create = {
         let input_node_ref = input_node_ref.clone();
         let push_deck = push_deck.clone();
 
@@ -112,7 +112,7 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
 
     html! {
         <div class={ classes!("text-3xl", "portrait:text-6xl", "flex", "w-full", "py-3") }>
-            <button onclick={ on_add_click } class={ classes!("px-2") }>
+            <button onclick={ on_create } class={ classes!("px-2") }>
                 { emojis::PENCIL }
             </button>
             <input
@@ -126,13 +126,14 @@ pub fn deck_add(DeckAddProps { push_deck }: &DeckAddProps) -> Html {
 
 #[derive(PartialEq, Properties)]
 pub struct DeckDetailProps {
-    pub id: usize,
+    pub deck_id: usize,
 }
 
 #[function_component(DeckDetail)]
-pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
+pub fn deck_detail(DeckDetailProps { deck_id }: &DeckDetailProps) -> Html {
     let page_number = use_state(|| 0);
 
+    // Fetch list of cards associated with this deck
     let cards = use_state(std::vec::Vec::new);
     let has_more = use_state(|| false);
     {
@@ -140,14 +141,14 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
         let has_more = has_more.clone();
         let this_page_number = *page_number;
         let page_number = page_number.clone();
-        let id = *id;
+        let deck_id = *deck_id;
         use_effect_with_deps(
             move |_| {
                 let cards = cards.clone();
                 wasm_bindgen_futures::spawn_local(async move {
                     let url = format!(
                         "/api/decks/{}/cards/?page={}&per_page={}",
-                        id, this_page_number, 24
+                        deck_id, this_page_number, 24
                     );
                     if let Ok::<Page<Card>, _>(page) = get(&url).await {
                         cards.set(page.results);
@@ -160,15 +161,16 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
         );
     }
 
+    // Fetch info about deck.
     let deck = use_state(|| None);
     {
         let deck = deck.clone();
-        let id = *id;
+        let deck_id = *deck_id;
         use_effect_with_deps(
             move |_| {
                 let deck = deck.clone();
                 wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!("/api/decks/{}/", id);
+                    let url = format!("/api/decks/{}/", deck_id);
                     if let Ok::<Deck, _>(fetched_deck) = get(&url).await {
                         deck.set(Some(fetched_deck));
                     }
@@ -231,7 +233,7 @@ pub fn deck_detail(DeckDetailProps { id }: &DeckDetailProps) -> Html {
                             // TODO think the solution to resizable grids is capping this iteration
                             // at some number divisible by grid rows.
                             (*cards).clone().into_iter().map(|card| {
-                                html! { <CardSummary deck_id={ *id } card={ card.clone() } /> }
+                                html! { <CardSummary deck_id={ *deck_id } card={ card.clone() } /> }
                             }).collect::<Html>()
                         }
                     </div>
@@ -263,13 +265,13 @@ fn deck_detail_header(DeckDetailHeaderProps { deck }: &DeckDetailHeaderProps) ->
     let history = use_history().unwrap();
     let on_revise_click = {
         let history = history.clone();
-        let deck_id = deck.id.clone();
-        Callback::from(move |_| history.push(AppRoute::Revision { id: deck_id }))
+        let deck_id = deck.id;
+        Callback::from(move |_| history.push(AppRoute::Revision { deck_id }))
     };
 
     let on_create_click = {
         let history = history;
-        let deck_id = deck.id.clone();
+        let deck_id = deck.id;
         Callback::from(move |_| {
             history.push(AppRoute::CardCreateForm { deck_id });
         })

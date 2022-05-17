@@ -1,14 +1,12 @@
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+use crate::lib::*;
 use crate::routes::*;
 
-mod api;
-mod cards;
-mod decks;
-mod emojis;
-mod login;
+mod lib;
 mod routes;
+mod views;
 
 #[derive(PartialEq, Properties)]
 pub struct LayoutProps {

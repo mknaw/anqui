@@ -1,19 +1,12 @@
-use serde::Deserialize;
 use serde_json::json;
 use web_sys::HtmlTextAreaElement;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::api::{delete, get, post_vanilla};
-use crate::AppRoute;
 use crate::emojis;
-
-#[derive(Clone, PartialEq, Deserialize)]
-pub struct Card {
-    pub id: usize,
-    pub front: String,
-    pub back: String,
-}
+use crate::models::Card;
+use crate::AppRoute;
 
 #[derive(PartialEq, Properties)]
 pub struct CardFormProps {
@@ -88,7 +81,7 @@ pub fn card_detail(CardFormProps { deck_id, card_id }: &CardFormProps) -> Html {
             wasm_bindgen_futures::spawn_local(async move {
                 let api_url = api_url.clone();
                 if post_vanilla(&api_url, payload).await.is_ok() {
-                    history.push(AppRoute::DeckDetail { id: deck_id });
+                    history.push(AppRoute::DeckDetail { deck_id });
                 } // TODO else ...
             });
         })
@@ -104,33 +97,32 @@ pub fn card_detail(CardFormProps { deck_id, card_id }: &CardFormProps) -> Html {
             wasm_bindgen_futures::spawn_local(async move {
                 let api_url = api_url.clone();
                 if delete(&api_url).await.is_ok() {
-                    history.push(AppRoute::DeckDetail { id: deck_id });
+                    history.push(AppRoute::DeckDetail { deck_id });
                 } // TODO else ...
             });
         })
     };
 
-    let on_return = {
-        let history = history.clone();
-        Callback::from(move |_| {
-            history.back();
-        })
-    };
+    let on_return = Callback::from(move |_| {
+        history.back();
+    });
 
     html! {
         <div>
-            <form { onsubmit } class={ classes!("flex", "flex-col") }>
+            <form { onsubmit } class={ classes!("flex", "flex-col", "text-3xl", "portrait:text-6xl") }>
                 <textarea
                     value={ (*front).clone() }
-                    placeholder={ "de face" }
                     onchange={ on_front_change }
+                    placeholder={ "de face" }
+                    class={ classes!("h-64") }
                 />
                 <textarea
                     value={ (*back).clone() }
-                    placeholder={ "arrière" }
                     onchange={ on_back_change }
+                    placeholder={ "arrière" }
+                    class={ classes!("h-64") }
                 />
-                <div class={ classes!("flex", "w-full", "justify-around", "text-3xl") }>
+                <div class={ classes!("flex", "w-full", "justify-around", "text-3xl", "portrait:text-6xl") }>
                     <button type={ "submit" }>
                         { emojis::PENCIL }
                     </button>
@@ -250,22 +242,22 @@ fn feedback_button(props: &FeedbackButtonProps) -> Html {
 
 #[derive(PartialEq, Properties)]
 pub struct RevisionProps {
-    pub id: usize,
+    pub deck_id: usize,
 }
 
 #[function_component(Revision)]
-pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
+pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
     let card_queue: UseStateHandle<Option<Vec<Card>>> = use_state(|| None);
     let front_shown = use_state(|| true);
 
     {
         let card_queue = card_queue.clone();
-        let id = *id;
+        let deck_id = *deck_id;
         use_effect_with_deps(
             move |_| {
                 let card_queue = card_queue.clone();
                 wasm_bindgen_futures::spawn_local(async move {
-                    let url = format!("/api/decks/{}/cards/", id);
+                    let url = format!("/api/decks/{}/cards/", deck_id);
                     if let Ok::<Vec<Card>, _>(fetched_cards) = get(&url).await {
                         card_queue.set(Some(fetched_cards));
                     };
@@ -334,7 +326,7 @@ pub fn revision(RevisionProps { id }: &RevisionProps) -> Html {
                             </>
                         },
                         None => html!{
-                            <Redirect<AppRoute> to={AppRoute::DeckDetail { id: *id }}/>
+                            <Redirect<AppRoute> to={AppRoute::DeckDetail { deck_id: *deck_id }}/>
                         },
                     }
                 } else {
