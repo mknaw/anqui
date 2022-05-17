@@ -14,6 +14,9 @@ pub enum Route {
     DeckDetail { id: usize },
     #[at("/decks/:id/revision/")]
     Revision { id: usize },
+    #[not_found]
+    #[at("/404")]
+    NotFound,
 }
 
 pub fn switch(routes: &Route) -> Html {
@@ -22,5 +25,11 @@ pub fn switch(routes: &Route) -> Html {
         Route::Decks => html! { <DeckHome /> },
         Route::DeckDetail { id } => html! { <DeckDetail id={ id.clone() } /> },
         Route::Revision { id } => html! { <Revision id={ id.clone() }/> },
+        Route::NotFound => html! {
+            <>
+                <h1>{ "Page not found 🤕" }</h1>
+                <Link<Route> to={ Route::Decks }>{ "Take me home" }</Link<Route>>
+            </>
+        },
     }
 }

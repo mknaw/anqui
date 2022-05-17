@@ -163,27 +163,29 @@ async fn login_get() -> impl Responder {
 async fn login(
     req_id: Identity,
     pool: web::Data<DbPool>,
-    form: web::Form<LoginFormData>,
+    form: web::Json<LoginFormData>,
 ) -> impl Responder {
     use super::schema::users::dsl::*;
 
     let conn = pool.get().unwrap();
     let user = users
         .filter(username.eq(&form.username))
-        .first::<User>(&conn)
-        .unwrap(); // TODO need to handle bad username more gracefully
+        .first::<User>(&conn);
 
-    let valid = verify(&form.password, &user.password).unwrap();
-    let redirect = if valid {
-        let session = user.new_session(&conn);
-        req_id.remember(session.token.clone());
-        "/"
+    let err_message;
+    if let Ok(user) = user {
+        if verify(&form.password, &user.password).unwrap() {
+            let session = user.new_session(&conn);
+            req_id.remember(session.token.clone());
+            return HttpResponse::Ok().finish();
+        } else {
+            err_message = "Invalid password.".to_string();
+        }
     } else {
-        "/login/"
-    };
-    HttpResponse::SeeOther()
-        .insert_header((header::LOCATION, redirect))
-        .finish()
+        err_message = "Invalid username.".to_string();
+    }
+    req_id.forget();
+    HttpResponse::Forbidden().body(err_message.to_owned())
 }
 
 #[get("/logoff/")]
@@ -193,20 +195,3 @@ async fn logoff(id: Identity) -> impl Responder {
         .insert_header((header::LOCATION, "/login/"))
         .finish()
 }
-
-// fn get_user_by_session_token(conn: &PgConnection, token_: &str) -> Option<User> {
-// use super::schema::sessions::dsl::{sessions, token};
-// use super::schema::users::dsl::{id, users};
-
-// let db_session = sessions
-// .filter(token.eq(token_))
-// // TODO >= however many hours ago.
-// .first::<DbSession>(conn);
-// match db_session {
-// Ok(s) => {
-// let user = users.filter(id.eq(s.user_id)).first::<User>(conn).unwrap();
-// Some(user)
-// }
-// _ => None,
-// }
-// }

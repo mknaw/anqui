@@ -1,33 +1,89 @@
+use reqwasm::http::Request;
+use serde_json::json;
+use web_sys::HtmlInputElement;
 use yew::prelude::*;
+use yew_router::prelude::*;
+
+use crate::routes::Route;
 
 #[function_component(Login)]
 pub fn login() -> Html {
+    let history = use_history().unwrap();
     let username_node_ref = use_node_ref();
     let password_node_ref = use_node_ref();
+    let error = use_state(|| "".to_string());
+
+    let on_submit = {
+        // TODO should be able to submit with enter
+        // TODO should have spinner or some sort of style while waiting
+        let username_node_ref = username_node_ref.clone();
+        let password_node_ref = password_node_ref.clone();
+        let error = error.clone();
+
+        Callback::from(move |_| {
+            let history = history.clone();
+            let username = username_node_ref.cast::<HtmlInputElement>();
+            let password = password_node_ref.cast::<HtmlInputElement>();
+            let error = error.clone();
+
+            if let (Some(username), Some(password)) = (username, password) {
+                let username = username.value();
+                let password = password.value();
+                if username.is_empty() || password.is_empty() {
+                    // TODO some sort of warning? maybe not needed
+                    log::info!("its empty");
+                    return;
+                }
+                let payload = json!({
+                    "username": username,
+                    "password": password,
+                });
+                wasm_bindgen_futures::spawn_local(async move {
+                    let response = Request::post("/login/")
+                        .header("Content-Type", "application/json")
+                        .body(serde_json::to_string(&payload).unwrap())
+                        .send()
+                        .await;
+                    if let Ok(response) = response {
+                        if response.status() == 200 {
+                            history.push(Route::Decks);
+                        } else {
+                            error.set(response.text().await.unwrap());
+                        }
+                    }
+                });
+            };
+        })
+    };
 
     html! {
-        <form action="" method="post">
+        <div>
+            {
+                if (*error).is_empty() {
+                    html! {}
+                } else {
+                    html! { <div>{ (*error).clone() }</div> }
+                }
+            }
             <div>
-                <label>{ "Username" }
-                    <input
-                        type="text"
-                        name="username"
-                        ref={ username_node_ref }
-                    />
-                </label>
+                <input
+                    type="text"
+                    name="username"
+                    placeholder="Username"
+                    ref={ username_node_ref }
+                />
             </div>
             <div>
-                <label>{ "Password" }
-                    <input
-                        type="password"
-                        name="password"
-                        ref={ password_node_ref }
-                    />
-                </label>
+                <input
+                    type="password"
+                    name="password"
+                    placeholder="Password"
+                    ref={ password_node_ref }
+                />
             </div>
             <div>
-                <button>{ "Log in" }</button>
+                <button onclick={ on_submit }>{ "Log in" }</button>
             </div>
-        </form>
+        </div>
     }
 }

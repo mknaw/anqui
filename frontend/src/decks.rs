@@ -47,6 +47,7 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
             let hidden = hidden.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 let url = format!("/api/decks/{}/", deck.id);
+                // TODO what if it fails?
                 Request::delete(&url).send().await.unwrap();
                 hidden.set(true);
             });

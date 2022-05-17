@@ -19,6 +19,7 @@ fn app() -> Html {
 }
 
 fn main() {
+    // TODO handle unauthed API requests (redirect to login for example)
     wasm_logger::init(wasm_logger::Config::default());
     log::info!("Some info");
     yew::start_app::<Main>();
