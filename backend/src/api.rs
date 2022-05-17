@@ -6,13 +6,16 @@ use actix_web::{delete, get, post, web, HttpResponse, Responder};
 use serde::Deserialize;
 
 #[get("/")]
-async fn read_decks(_auth: Authenticated, pool: web::Data<DbPool>) -> impl Responder {
+async fn read_decks(auth: Authenticated, pool: web::Data<DbPool>) -> impl Responder {
     use super::schema::decks::dsl::*;
 
     log::info!("read_decks");
 
     let conn = pool.get().unwrap();
-    let results = decks.load::<Deck>(&conn).expect("Error loading decks");
+    let results = decks
+        .filter(user_id.eq(auth.get_user(&conn).id))
+        .load::<Deck>(&conn)
+        .expect("Error loading decks");
 
     HttpResponse::Ok().json(results)
 }
@@ -36,14 +39,17 @@ async fn new_deck(
 
 #[delete("{id}/")]
 async fn delete_deck(
-    _auth: Authenticated,
+    auth: Authenticated,
     pool: web::Data<DbPool>,
     path: web::Path<(i32,)>,
 ) -> impl Responder {
     use super::schema::decks::dsl::*;
 
     let conn = pool.get().unwrap();
-    diesel::delete(decks.filter(id.eq(path.into_inner().0)))
+    let decks_to_delete = decks
+        .filter(id.eq(path.into_inner().0))
+        .filter(user_id.eq(auth.get_user(&conn).id));
+    diesel::delete(decks_to_delete)
         .execute(&conn)
         .expect("Error deleting deck");
 
@@ -52,7 +58,7 @@ async fn delete_deck(
 
 #[get("{id}/")]
 async fn read_deck(
-    _auth: Authenticated,
+    auth: Authenticated,
     pool: web::Data<DbPool>,
     path: web::Path<(i32,)>,
 ) -> impl Responder {
@@ -63,6 +69,7 @@ async fn read_deck(
     let conn = pool.get().unwrap();
     let deck = decks
         .filter(id.eq(path.into_inner().0))
+        .filter(user_id.eq(auth.get_user(&conn).id))
         .first::<Deck>(&conn)
         .expect("Error getting deck");
 
@@ -71,19 +78,27 @@ async fn read_deck(
 
 #[get("{id}/cards/")]
 async fn read_cards(
-    _auth: Authenticated,
+    auth: Authenticated,
     pool: web::Data<DbPool>,
     path: web::Path<(i32,)>,
 ) -> impl Responder {
     use super::schema::cards::dsl::*;
+    use super::schema::decks::dsl::{decks, user_id};
 
     log::info!("read_cards");
 
     let conn = pool.get().unwrap();
-    let results = cards
+    let results: Vec<Card> = cards
+        // TODO it's not really that great to get all of Deck when
+        // just want to know that it's a deck of the right `user_id`.
+        .inner_join(decks)
         .filter(deck_id.eq(path.into_inner().0))
-        .load::<Card>(&conn)
-        .expect("Error loading cards");
+        .filter(user_id.eq(auth.get_user(&conn).id))
+        .load(&conn)
+        .expect("Error loading cards")
+        .into_iter()
+        .map(|(c, _): (Card, Deck)| c)
+        .collect();
 
     HttpResponse::Ok().json(results)
 }
@@ -97,7 +112,7 @@ struct NewWebCard {
 
 #[post("/{id}/cards/")]
 async fn new_card(
-    _auth: Authenticated,
+    _auth: Authenticated, // TODO
     pool: web::Data<DbPool>,
     path: web::Path<(i32,)>,
     payload: web::Json<NewWebCard>,
@@ -106,6 +121,7 @@ async fn new_card(
     let card = Card::create(
         &pool.get().unwrap(),
         NewCard {
+            // TODO probably best to assert this is from a deck of the right user.
             deck_id: path.into_inner().0,
             front: payload.front,
             back: payload.back,
@@ -116,7 +132,7 @@ async fn new_card(
 
 #[post("/cards/{id}/feedback/")]
 async fn post_feedback(
-    _auth: Authenticated,
+    _auth: Authenticated, // TODO
     pool: web::Data<DbPool>,
     path: web::Path<(i32,)>,
     feedback: String,
@@ -126,6 +142,7 @@ async fn post_feedback(
     let conn = pool.get().unwrap();
     let card_id = path.into_inner().0;
     // TODO only need to select `revision_weight` really
+    // TODO probably best to assert this is from a deck of the right user.
     let mut card = cards.filter(id.eq(card_id)).first::<Card>(&conn).unwrap();
     card.add_feedback(&conn, &feedback);
 
@@ -134,18 +151,23 @@ async fn post_feedback(
 
 #[get("{id}/revision/")]
 async fn get_revision_cards(
-    _auth: Authenticated,
+    auth: Authenticated,
     pool: web::Data<DbPool>,
     path: web::Path<(i32,)>,
 ) -> impl Responder {
     use super::schema::cards::dsl::*;
+    use super::schema::decks::dsl::{decks, user_id};
 
     let conn = pool.get().unwrap();
     let ids = cards
+        // TODO it's not really that great to get all of Deck when
+        // just want to know that it's a deck of the right `user_id`.
+        .inner_join(decks)
         .filter(deck_id.eq(path.into_inner().0))
+        .filter(user_id.eq(auth.get_user(&conn).id))
         .order_by(diesel::dsl::sql::<i32>("random() ^ revision_weight"))
-        // TODO would be nice to take this from a user preference.
         .select(id)
+        // TODO would be nice to take this from a user preference.
         .limit(25)
         .load::<i32>(&conn)
         .expect("Error loading cards");
