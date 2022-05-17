@@ -13,17 +13,17 @@ pub fn login() -> Html {
     let password_node_ref = use_node_ref();
     let error = use_state(|| "".to_string());
 
-    let on_submit = {
-        // TODO should be able to submit with enter
-        // TODO should have spinner or some sort of style while waiting
+    let onsubmit = {
         let username_node_ref = username_node_ref.clone();
         let password_node_ref = password_node_ref.clone();
         let error = error.clone();
 
-        Callback::from(move |_| {
-            let history = history.clone();
+        Callback::from(move |e: FocusEvent| {
+            e.prevent_default();
+
             let username = username_node_ref.cast::<HtmlInputElement>();
             let password = password_node_ref.cast::<HtmlInputElement>();
+            let history = history.clone();
             let error = error.clone();
 
             if let (Some(username), Some(password)) = (username, password) {
@@ -49,7 +49,7 @@ pub fn login() -> Html {
     };
 
     html! {
-        <div>
+        <form { onsubmit }>
             {
                 if (*error).is_empty() {
                     html! {}
@@ -74,8 +74,8 @@ pub fn login() -> Html {
                 />
             </div>
             <div>
-                <button onclick={ on_submit }>{ "Log in" }</button>
+                <button type={ "submit" }>{ "Log in" }</button>
             </div>
-        </div>
+        </form>
     }
 }
