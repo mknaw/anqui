@@ -2,5 +2,5 @@
 # echo "$(ls)"
 # ./target/release/trunk build frontend/index.html
 echo "attempting migrations"
-cd backend
+cd common
 ../target/release/diesel migration run

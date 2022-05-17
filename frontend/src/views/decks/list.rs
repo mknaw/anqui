@@ -1,3 +1,4 @@
+use common::models::Deck;
 use serde_json::json;
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
@@ -5,7 +6,6 @@ use yew_router::prelude::*;
 
 use crate::api;
 use crate::emojis;
-use crate::models::*;
 use crate::routes::AppRoute;
 use crate::AppContext;
 

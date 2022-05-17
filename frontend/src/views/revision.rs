@@ -1,14 +1,14 @@
+use common::models::{Card, Deck};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::api;
-use crate::models::*;
 use crate::AppContext;
 use crate::AppRoute;
 
 #[derive(PartialEq, Properties)]
 pub struct RevisionProps {
-    pub deck_id: usize,
+    pub deck_id: i32,
 }
 
 #[function_component(Revision)]

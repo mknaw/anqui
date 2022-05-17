@@ -1,3 +1,4 @@
+use common::models::{Card, Deck};
 use wasm_bindgen::JsCast;
 use web_sys::Element;
 use yew::prelude::*;
@@ -5,13 +6,12 @@ use yew_router::prelude::*;
 
 use crate::api;
 use crate::emojis;
-use crate::models::*;
 use crate::routes::AppRoute;
 use crate::AppContext;
 
 #[derive(PartialEq, Properties)]
 pub struct DeckDetailProps {
-    pub deck_id: usize,
+    pub deck_id: i32,
 }
 
 #[function_component(DeckDetail)]
@@ -164,7 +164,7 @@ fn deck_detail_toolbar(DeckDetailToolbarProps { deck }: &DeckDetailToolbarProps)
 
 #[derive(PartialEq, Properties)]
 pub struct CardSummaryProps {
-    deck_id: usize,
+    deck_id: i32,
     card: Card,
 }
 

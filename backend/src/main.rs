@@ -1,18 +1,25 @@
-extern crate log;
-
-extern crate backend;
-extern crate bcrypt;
+#[macro_use]
 extern crate diesel;
+extern crate dotenv;
+
+extern crate bcrypt;
+extern crate log;
 
 use std::env;
 
 use actix_files::{Files, NamedFile};
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::{http, middleware::ErrorHandlers, web, App, HttpServer, Responder};
-use backend::api::*;
-use backend::auth::*;
-use backend::db::new_db_pool;
 use dotenv::dotenv;
+
+use crate::api::*;
+use crate::auth::*;
+use crate::db::new_db_pool;
+
+mod api;
+mod auth;
+mod db;
+mod revision;
 
 async fn index(_auth: Authenticated, _data: web::Path<()>) -> impl Responder {
     // Need to "default" serve `index.html` from every random URL to play nice with Yew routes.

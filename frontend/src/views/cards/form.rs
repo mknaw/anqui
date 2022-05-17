@@ -1,3 +1,4 @@
+use common::models::Card;
 use serde_json::json;
 use web_sys::HtmlTextAreaElement;
 use yew::prelude::*;
@@ -5,13 +6,12 @@ use yew_router::prelude::*;
 
 use crate::api;
 use crate::emojis;
-use crate::models::*;
 use crate::AppRoute;
 
 #[derive(PartialEq, Properties)]
 pub struct CardFormProps {
-    pub deck_id: usize,
-    pub card_id: Option<usize>,
+    pub deck_id: i32,
+    pub card_id: Option<i32>,
 }
 
 #[function_component(CardForm)]

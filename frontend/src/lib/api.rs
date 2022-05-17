@@ -1,11 +1,10 @@
 use core::fmt;
 
+use common::models::Deck;
 use reqwasm::{http::Request, http::Response, Error};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde_json::Value;
-
-use crate::models::*;
 
 #[derive(Debug)]
 pub struct ApiError(String);
@@ -78,7 +77,7 @@ pub struct Page<T> {
     pub has_more: bool,
 }
 
-pub fn get_deck(deck_id: usize, callback: Box<dyn Fn(Deck)>) {
+pub fn get_deck(deck_id: i32, callback: Box<dyn Fn(Deck)>) {
     wasm_bindgen_futures::spawn_local(async move {
         let url = format!("/api/decks/{}/", deck_id);
         if let Ok::<Deck, _>(fetched_deck) = get(&url).await {

@@ -1,6 +1,6 @@
 use std::env;
 
-use diesel::pg::{Pg, PgConnection};
+use diesel::pg::Pg;
 use diesel::prelude::*;
 use diesel::query_builder::*;
 use diesel::query_dsl::methods::LoadQuery;
@@ -71,14 +71,6 @@ pub struct Paginated<T> {
 }
 
 impl<T> Paginated<T> {
-    pub fn per_page(self, per_page: i64) -> Self {
-        Paginated {
-            per_page,
-            offset: self.page_number * per_page,
-            ..self
-        }
-    }
-
     pub fn load_and_count_pages<U, C>(self, conn: &C) -> QueryResult<Page<U>>
     where
         U: Serialize,

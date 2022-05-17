@@ -24,13 +24,13 @@ pub enum AppRoute {
     Decks,
     // TODO would be nice to have a title slug instead of int id.
     #[at("/app/decks/:deck_id/")]
-    DeckDetail { deck_id: usize },
+    DeckDetail { deck_id: i32 },
     #[at("/app/decks/:deck_id/revision/")]
-    Revision { deck_id: usize },
+    Revision { deck_id: i32 },
     #[at("/app/decks/:deck_id/cards/")]
-    CardCreateForm { deck_id: usize },
+    CardCreateForm { deck_id: i32 },
     #[at("/app/decks/:deck_id/cards/:card_id/")]
-    CardUpdateForm { deck_id: usize, card_id: usize },
+    CardUpdateForm { deck_id: i32, card_id: i32 },
 }
 
 pub fn main_switch(routes: &MainRoute) -> Html {

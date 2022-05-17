@@ -10,15 +10,16 @@ use actix_web::{
     post, web, Error, FromRequest, HttpMessage, HttpResponse, Responder,
 };
 use bcrypt::verify;
+use chrono::{Duration, Utc};
+use common::models::{Session, User};
 use derive_more::{Display, Error};
-use diesel::pg::PgConnection;
+use diesel::prelude::*;
 use futures::future::{ready, Ready};
 use futures_util::future::{FutureExt, LocalBoxFuture};
+use rand::{distributions::Alphanumeric, Rng};
 use serde::Deserialize;
 
-use super::db::DbPool;
-use super::diesel::prelude::*;
-use crate::models::{Session, User};
+use crate::db::DbPool;
 
 #[derive(Debug, Display, Error)]
 #[display(fmt = "auth error")]
@@ -60,7 +61,7 @@ where
                 // See if we can match it to a user.
                 let pool = req.app_data::<web::Data<DbPool>>().unwrap();
                 let conn = pool.get().unwrap();
-                let session = Session::get_current(&conn, &token);
+                let session = get_current_session(&conn, &token);
 
                 if let Some(session) = session {
                     req.extensions_mut()
@@ -113,9 +114,14 @@ where
 pub struct Authenticated(AuthenticationInfo);
 
 impl Authenticated {
+    // TODO `user` should maybe just live on AuthenticationInfo
     pub fn get_user(&self, conn: &PgConnection) -> User {
+        use common::schema::users::dsl::*;
         let session = &self.0.session;
-        session.get_user(conn)
+        users
+            .filter(id.eq(session.user_id))
+            .first::<User>(conn)
+            .unwrap()
     }
 }
 
@@ -173,7 +179,7 @@ async fn login(
     pool: web::Data<DbPool>,
     form: web::Json<LoginFormData>,
 ) -> impl Responder {
-    use super::schema::users::dsl::*;
+    use common::schema::users::dsl::*;
 
     let conn = pool.get().unwrap();
     let user = users
@@ -183,7 +189,7 @@ async fn login(
     let err_message;
     if let Ok(user) = user {
         if verify(&form.password, &user.password).unwrap() {
-            let session = user.new_session(&conn);
+            let session = new_session(&user, &conn);
             req_id.remember(session.token);
             return HttpResponse::Ok().finish();
         } else {
@@ -202,4 +208,40 @@ async fn logout(id: Identity) -> impl Responder {
     HttpResponse::SeeOther()
         .insert_header((header::LOCATION, "/login/"))
         .finish()
+}
+
+fn get_current_session(conn: &PgConnection, try_token: &str) -> Option<Session> {
+    use common::schema::sessions::dsl::*;
+
+    // TODO prolly could have this in config / env
+    let min_ts = Utc::now().naive_utc() - Duration::hours(36);
+    sessions
+        .filter(token.eq(try_token))
+        .filter(created.gt(min_ts))
+        .first::<Session>(conn)
+        .ok()
+}
+
+// TODO probably should return a Result
+fn new_session(user: &User, conn: &PgConnection) -> Session {
+    use common::schema::sessions::dsl::*;
+
+    diesel::delete(sessions.filter(user_id.eq(user.id)))
+        .execute(conn)
+        .unwrap();
+
+    let tok: String = rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(25)
+        .map(char::from)
+        .collect();
+
+    diesel::insert_into(sessions)
+        .values((
+            user_id.eq(user.id),
+            token.eq(tok),
+            created.eq(Utc::now().naive_utc()),
+        ))
+        .get_result(conn)
+        .unwrap()
 }

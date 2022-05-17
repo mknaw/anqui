@@ -333,6 +333,7 @@ dependencies = [
  "actix-web",
  "bcrypt",
  "chrono",
+ "common",
  "derive_more",
  "diesel",
  "dotenv",
@@ -487,6 +488,15 @@ checksum = "d1873270f8f7942c191139cb8a40fd228da6c3fd2fc376d7e92d47aa14aeb59e"
 dependencies = [
  "crypto-common",
  "inout",
+]
+
+[[package]]
+name = "common"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "diesel",
+ "serde",
 ]
 
 [[package]]
@@ -675,6 +685,7 @@ dependencies = [
 name = "frontend"
 version = "0.1.0"
 dependencies = [
+ "common",
  "log",
  "reqwasm",
  "serde",
