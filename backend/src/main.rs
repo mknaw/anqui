@@ -29,7 +29,7 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         let policy = CookieIdentityPolicy::new(&[0; 32])
             .name("auth-cookie")
-            .secure(true);
+            .secure(false);
 
         App::new()
             .app_data(web::Data::new(new_db_pool()))
