@@ -1,5 +1,9 @@
 use yew::prelude::*;
 
+pub mod deck_form;
+
+pub(crate) use deck_form::DeckFormModal;
+
 #[derive(PartialEq, Properties)]
 pub struct ModalProps {
     pub children: Children,

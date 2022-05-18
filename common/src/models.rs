@@ -27,6 +27,14 @@ pub struct Deck {
     pub id: i32,
     pub name: String,
     pub user_id: i32,
+    pub revision_length: i16,
+}
+
+#[derive(AsChangeset, Deserialize)]
+#[table_name = "decks"]
+pub struct PostDeck {
+    pub name: Option<String>,
+    pub revision_length: Option<i16>,
 }
 
 #[derive(Clone, PartialEq, Associations, Identifiable, Queryable, Deserialize, Serialize)]

@@ -1,3 +1,1 @@
-mod modal;
-
-pub(crate) use modal::Modal;
+pub mod modals;

@@ -5,6 +5,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::api;
+use crate::components::modals::DeckFormModal;
 use crate::emojis;
 use crate::routes::AppRoute;
 use crate::AppContext;
@@ -57,12 +58,14 @@ pub struct DeckListRowProps {
 
 #[function_component(DeckListRow)]
 fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
+    let deck = use_state(|| deck.clone());
     let hidden = use_state(|| false);
     let on_delete = {
         let hidden = hidden.clone();
         let deck = deck.clone();
         Callback::from(move |_| {
             let hidden = hidden.clone();
+            let deck = deck.clone();
             wasm_bindgen_futures::spawn_local(async move {
                 let url = format!("/api/decks/{}/", deck.id);
                 if api::delete(&url).await.is_ok() {
@@ -71,6 +74,27 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
             });
         })
     };
+
+    // Allow children to update the `deck` state.
+    let update_deck = {
+        let deck = deck.clone();
+        Callback::from(move |updated_deck: Deck| {
+            deck.set(updated_deck);
+        })
+    };
+
+    let ctx = use_context::<AppContext>().unwrap();
+    let on_gear_click = {
+        let deck = (*deck).clone();
+        Callback::from(move |_| {
+            let deck = deck.clone();
+            let update_deck = update_deck.clone();
+            ctx.set_modal.emit(Some(html! {
+                <DeckFormModal { deck } { update_deck } />
+            }));
+        })
+    };
+
     let deck_id = deck.id;
     html! {
         <div key={ deck.id } hidden={ *hidden } class={ classes!("py-2") }>
@@ -82,6 +106,11 @@ fn deck_list_row(DeckListRowProps { deck }: &DeckListRowProps) -> Html {
                 <Link<AppRoute> to={ AppRoute::Revision { deck_id } }>
                     { emojis::BELL }
                 </Link<AppRoute>>
+            </span>
+            <span class={ classes!("px-2") }>
+                <button onclick={ on_gear_click }>
+                    { emojis::GEAR }
+                </button>
             </span>
             <span class={ classes!("px-2") }>
                 <Link<AppRoute> to={ AppRoute::DeckDetail { deck_id } }>

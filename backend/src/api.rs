@@ -1,5 +1,5 @@
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
-use common::models::{Card, Deck};
+use common::models::{Card, Deck, PostDeck};
 use common::query_params::CardReadQuery;
 use diesel::dsl::{exists, select, sql, sql_query};
 use diesel::prelude::*;
@@ -71,18 +71,23 @@ async fn update_deck(
     auth: Authenticated,
     pool: web::Data<DbPool>,
     path: web::Path<(i32,)>,
-    payload: web::Json<DeckPayload>,
+    payload: web::Json<PostDeck>,
 ) -> impl Responder {
     use common::schema::decks;
 
     let (deck_id,) = path.into_inner();
     let conn = pool.get().unwrap();
-    let name = payload.name.trim();
+    let mut payload = payload.into_inner();
+    if let Some(name) = payload.name {
+        // TODO probably could handle during deserialization?
+        payload.name = Some(name.trim().to_string());
+    }
+    // TODO should enforce the same min / max `revision_length` as on frontend.
     let target = decks::table
         .filter(decks::id.eq(deck_id))
         .filter(decks::user_id.eq(auth.get_user(&conn).id));
     let deck = diesel::update(target)
-        .set(decks::name.eq(name))
+        .set(payload)
         .get_result::<Deck>(&conn)
         .unwrap();
 
@@ -295,25 +300,30 @@ async fn get_revision_cards(
     pool: web::Data<DbPool>,
     path: web::Path<(i32,)>,
 ) -> impl Responder {
-    use common::schema::cards::dsl::*;
-    use common::schema::decks::dsl::{decks, user_id};
+    use common::schema::{cards, decks};
 
+    let (deck_id,) = path.into_inner();
     let conn = pool.get().unwrap();
-    let ids = cards
+    let revision_length = decks::table
+        .filter(decks::id.eq(deck_id))
+        .filter(decks::user_id.eq(auth.get_user(&conn).id))
+        .select(decks::revision_length)
+        .first::<i16>(&conn)
+        .unwrap();
+    let ids = cards::table
         // TODO it's not really that great to get all of Deck when
         // just want to know that it's a deck of the right `user_id`.
-        .inner_join(decks)
-        .filter(deck_id.eq(path.into_inner().0))
-        .filter(user_id.eq(auth.get_user(&conn).id))
+        .inner_join(decks::table)
+        .filter(cards::deck_id.eq(deck_id))
+        .filter(decks::user_id.eq(auth.get_user(&conn).id))
         .order_by(sql::<i32>("-random() * revision_weight"))
-        .select(id)
-        // TODO should come from a user preference.
-        .limit(10)
+        .select(cards::id)
+        .limit(revision_length.into())
         .load::<i32>(&conn)
         .unwrap();
 
-    let results = cards
-        .filter(id.eq_any(ids))
+    let results = cards::table
+        .filter(cards::id.eq_any(ids))
         .order_by(sql::<i32>("random()"))
         .load::<Card>(&conn)
         .unwrap();

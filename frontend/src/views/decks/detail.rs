@@ -1,13 +1,12 @@
 use common::models::{Card, Deck};
 use common::query_params::CardReadQuery;
-use serde_json::json;
 use wasm_bindgen::JsCast;
 use web_sys::{Element, HtmlInputElement};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::api;
-use crate::components::Modal;
+use crate::components::modals::DeckFormModal;
 use crate::emojis;
 use crate::routes::AppRoute;
 use crate::AppContext;
@@ -44,7 +43,6 @@ pub fn deck_detail(DeckDetailProps { deck_id }: &DeckDetailProps) -> Html {
     let update_deck = {
         let deck = deck.clone();
         Callback::from(move |updated_deck: Deck| {
-            log::info!("got my deck");
             deck.set(Some(updated_deck));
         })
     };
@@ -325,72 +323,5 @@ fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
             <hr class={ classes!("w-full", "border-gray-600", "border", "border-dashed") } />
             { card_content(&card.back) }
         </div>
-    }
-}
-
-// TODO probably should move it... somewhere...
-#[derive(PartialEq, Properties)]
-pub struct DeckFormModalProps {
-    pub deck: Deck,
-    pub update_deck: Callback<Deck>,
-}
-
-#[function_component(DeckFormModal)]
-fn deck_form_modal(DeckFormModalProps { deck, update_deck }: &DeckFormModalProps) -> Html {
-    let ctx = use_context::<AppContext>().unwrap();
-
-    let name = use_state(|| deck.name.clone());
-
-    let onsubmit = {
-        let deck_id = deck.id;
-        let name = name.clone();
-        let update_deck = update_deck.clone();
-        Callback::from(move |e: FocusEvent| {
-            e.prevent_default();
-            let update_deck = update_deck.clone();
-            let ctx = ctx.clone();
-            let url = format!("/api/decks/{}/", deck_id);
-            if name.is_empty() {
-                return;
-            }
-            let payload = json!({
-                "name": *name,
-            });
-            wasm_bindgen_futures::spawn_local(async move {
-                if let Ok::<Deck, _>(deck) = api::post(&url, payload).await {
-                    update_deck.emit(deck);
-                    ctx.set_modal.emit(None);
-                }
-            });
-        })
-    };
-
-    let oninput = {
-        let name = name.clone();
-        Callback::from(move |e: InputEvent| {
-            let input: HtmlInputElement = e.target_unchecked_into();
-            name.set(input.value());
-        })
-    };
-
-    html! {
-        <Modal title={ Some("Modifier le paquet") }>
-            <form { onsubmit }>
-                <div class={ classes!("flex", "flex-row") }>
-                    <button
-                        type={ "submit" }
-                        class={ classes!("px-2") }
-                    >
-                        { emojis::PENCIL }
-                    </button>
-                    <input
-                        { oninput }
-                        type="text"
-                        value={ (*name).clone() }
-                        placeholder={ "Nom du paquet" }
-                    />
-                </div>
-            </form>
-        </Modal>
     }
 }

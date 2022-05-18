@@ -13,6 +13,7 @@ table! {
         id -> Int4,
         name -> Text,
         user_id -> Int4,
+        revision_length -> Int2,
     }
 }
 
