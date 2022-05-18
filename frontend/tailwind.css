@@ -497,6 +497,10 @@ Ensure the default browser behavior of the `hidden` attribute.
   left: 0px;
 }
 
+.top-\[5vh\] {
+  top: 5vh;
+}
+
 .bottom-10 {
   bottom: 2.5rem;
 }
@@ -558,6 +562,10 @@ Ensure the default browser behavior of the `hidden` attribute.
   height: 100%;
 }
 
+.h-\[85vh\] {
+  height: 85vh;
+}
+
 .h-\[40vh\] {
   height: 40vh;
 }
@@ -572,10 +580,6 @@ Ensure the default browser behavior of the `hidden` attribute.
 
 .h-\[90vh\] {
   height: 90vh;
-}
-
-.h-\[85vh\] {
-  height: 85vh;
 }
 
 .h-32 {
@@ -599,6 +603,10 @@ Ensure the default browser behavior of the `hidden` attribute.
 }
 
 .w-screen {
+  width: 100vw;
+}
+
+.w-\[100vw\] {
   width: 100vw;
 }
 

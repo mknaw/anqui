@@ -92,11 +92,24 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
                         )
                     }
                 >
+                    {
+                        if *front_shown {
+                            html! {
+                                <div
+                                    onclick={ on_card_click.clone() }
+                                    class={ classes!("absolute", "w-[100vw]", "h-[85vh]", "top-[5vh]") }
+                                >
+                                    // Empty div for making it easier to click wherever
+                                </div>
+                            }
+                        } else {
+                            html! {}
+                        }
+                    }
                     <div class={ classes!("h-[40vh]", "flex", "items-end") }>
                         <RevisionCardDisplay
                             card={ c.clone() }
                             front_shown={ *front_shown.clone() }
-                            onclick={ on_card_click.clone() }
                         />
                     </div>
                     {
@@ -129,7 +142,6 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
 struct RevisionCardDisplayProps {
     card: Card,
     front_shown: bool,
-    onclick: Callback<()>,
 }
 
 // TODO probably should pull out a common component to use here and in the card list.
@@ -141,14 +153,9 @@ fn revision_card(props: &RevisionCardDisplayProps) -> Html {
         "cursor-default"
     };
 
-    let onclick = {
-        let onclick = props.onclick.clone();
-        Callback::from(move |_| onclick.emit(()))
-    };
-
     html! {
         <div class={ classes!("flex", "flex-col", "items-center", cursor) }>
-            <div { onclick } class={ "text-center mb-10" }>{ &props.card.front }</div>
+            <div class={ "text-center mb-10" }>{ &props.card.front }</div>
             {
                 if !props.front_shown {
                     html! {

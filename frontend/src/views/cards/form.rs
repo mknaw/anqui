@@ -103,8 +103,9 @@ pub fn card_form(CardFormProps { deck_id, card_id }: &CardFormProps) -> Html {
         })
     };
 
+    let deck_id = *deck_id;
     let on_return = Callback::from(move |_| {
-        history.back();
+        history.push(AppRoute::DeckDetail { deck_id });
     });
 
     html! {
