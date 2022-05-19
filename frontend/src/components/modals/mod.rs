@@ -1,7 +1,9 @@
 use yew::prelude::*;
 
+pub mod card_form;
 pub mod deck_form;
 
+pub(crate) use card_form::CardFormModal;
 pub(crate) use deck_form::DeckFormModal;
 
 #[derive(PartialEq, Properties)]

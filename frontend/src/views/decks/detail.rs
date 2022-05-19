@@ -6,7 +6,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::api;
-use crate::components::modals::DeckFormModal;
+use crate::components::modals::{CardFormModal, DeckFormModal};
 use crate::emojis;
 use crate::routes::AppRoute;
 use crate::AppContext;
@@ -280,6 +280,7 @@ pub struct CardSummaryProps {
 
 #[function_component(CardSummary)]
 fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
+    let ctx = use_context::<AppContext>().unwrap();
     fn card_content(content: &str) -> Html {
         html! {
             <span
@@ -295,13 +296,13 @@ fn card(CardSummaryProps { deck_id, card }: &CardSummaryProps) -> Html {
         }
     }
 
-    let history = use_history().unwrap();
     let onclick = {
         let deck_id = *deck_id;
         let card_id = card.id;
-        let history = history;
         Callback::from(move |_| {
-            history.push(AppRoute::CardUpdateForm { deck_id, card_id });
+            ctx.set_modal.emit(Some(html! {
+                <CardFormModal { deck_id } { card_id } />
+            }));
         })
     };
 

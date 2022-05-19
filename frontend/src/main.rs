@@ -114,7 +114,7 @@ pub fn layout(LayoutProps { children }: &LayoutProps) -> Html {
                                         )
                                     }
                                 >
-                                    <div class={ "-translate-y-[15rem]" }>
+                                    <div>
                                         { modal }
                                     </div>
                                 </div>
