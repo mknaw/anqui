@@ -1,4 +1,6 @@
-use common::models::{Card, Deck};
+use std::fmt;
+
+use common::models::{Deck, RevisionCard};
 use yew::prelude::*;
 use yew_router::prelude::*;
 
@@ -15,7 +17,7 @@ pub struct RevisionProps {
 pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
     let card_queue = use_state(|| None);
     let revision_length = use_state(|| 0);
-    let front_shown = use_state(|| true);
+    let flipped = use_state(|| false);
 
     let ctx = use_context::<AppContext>().unwrap();
     api::get_deck(
@@ -34,7 +36,7 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
                 let card_queue = card_queue.clone();
                 wasm_bindgen_futures::spawn_local(async move {
                     let url = format!("/api/decks/{}/revision/", deck_id);
-                    if let Ok::<Vec<Card>, _>(fetched_cards) = api::get(&url).await {
+                    if let Ok::<Vec<RevisionCard>, _>(fetched_cards) = api::get(&url).await {
                         revision_length.set(fetched_cards.len());
                         card_queue.set(Some(fetched_cards));
                     };
@@ -46,30 +48,26 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
     }
 
     let on_card_click = {
-        let front_shown = front_shown.clone();
-        Callback::from(move |_| front_shown.set(false))
+        let flipped = flipped.clone();
+        Callback::from(move |_| flipped.set(true))
     };
 
     let on_feedback_click = match &*card_queue {
         Some(cards) => {
             let card_queue = card_queue.clone();
             let cards = cards.clone();
-            let front_shown = front_shown.clone();
+            let flipped = flipped.clone();
 
             Callback::from(move |feedback: Feedback| {
                 let mut cards = cards.clone();
-                let front_shown_val = !*front_shown;
-                front_shown.set(front_shown_val);
-                if !front_shown_val {
-                    return;
-                }
+                flipped.set(false);
                 let popped = cards.pop();
                 card_queue.set(Some(cards));
 
                 if let Some(card) = popped {
                     wasm_bindgen_futures::spawn_local(async move {
                         let url = format!("/api/cards/{}/feedback/", card.id);
-                        let payload = serde_json::Value::String(label_feedback(&feedback));
+                        let payload = serde_json::Value::String(feedback.to_string());
                         api::post_vanilla(&url, payload).await.ok();
                     });
                 }
@@ -93,7 +91,9 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
                     }
                 >
                     {
-                        if *front_shown {
+                        if *flipped {
+                            html! {}
+                        } else {
                             html! {
                                 <div
                                     onclick={ on_card_click.clone() }
@@ -102,18 +102,16 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
                                     // Empty div for making it easier to click wherever
                                 </div>
                             }
-                        } else {
-                            html! {}
                         }
                     }
                     <div class={ classes!("h-[40vh]", "flex", "items-end") }>
                         <RevisionCardDisplay
                             card={ c.clone() }
-                            front_shown={ *front_shown.clone() }
+                            flipped={ *flipped.clone() }
                         />
                     </div>
                     {
-                        if !(*front_shown) {
+                        if *flipped {
                             html! {
                                 <FeedbackBar
                                     onclick={ on_feedback_click.clone() }
@@ -140,27 +138,27 @@ pub fn revision(RevisionProps { deck_id }: &RevisionProps) -> Html {
 
 #[derive(PartialEq, Properties)]
 struct RevisionCardDisplayProps {
-    card: Card,
-    front_shown: bool,
+    card: RevisionCard,
+    flipped: bool,
 }
 
 // TODO probably should pull out a common component to use here and in the card list.
 #[function_component(RevisionCardDisplay)]
 fn revision_card(props: &RevisionCardDisplayProps) -> Html {
-    let cursor = if props.front_shown {
-        "cursor-pointer"
-    } else {
+    let cursor = if props.flipped {
         "cursor-default"
+    } else {
+        "cursor-pointer"
     };
 
     html! {
         <div class={ classes!("flex", "flex-col", "items-center", cursor) }>
-            <div class={ "text-center mb-10" }>{ &props.card.front }</div>
+            <div class={ "text-center mb-10" }>{ &props.card.first }</div>
             {
-                if !props.front_shown {
+                if props.flipped {
                     html! {
                         // TODO this should always take up a fixed height.
-                        <div class={ "text-center mb-10" }>{ &props.card.back }</div>
+                        <div class={ "text-center mb-10" }>{ &props.card.second }</div>
                     }
                 } else {
                     html! {}
@@ -178,12 +176,14 @@ pub enum Feedback {
     Easy,
 }
 
-fn label_feedback(feedback: &Feedback) -> String {
-    match &feedback {
-        Feedback::Fail => "fail".to_string(),
-        Feedback::Hard => "hard".to_string(),
-        Feedback::Good => "good".to_string(),
-        Feedback::Easy => "easy".to_string(),
+impl fmt::Display for Feedback {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Feedback::Fail => write!(f, "fail"),
+            Feedback::Hard => write!(f, "hard"),
+            Feedback::Good => write!(f, "good"),
+            Feedback::Easy => write!(f, "easy"),
+        }
     }
 }
 
@@ -248,7 +248,7 @@ fn feedback_button(props: &FeedbackButtonProps) -> Html {
                 )
             }
         >
-            { label_feedback(&props.feedback) }
+            { &props.feedback.to_string() }
         </button>
     }
 }

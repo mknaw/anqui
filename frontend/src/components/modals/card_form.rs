@@ -99,8 +99,6 @@ pub fn card_form_modal(CardFormModalProps { deck_id, card_id }: &CardFormModalPr
 
     let on_delete = {
         let deck_id = *deck_id;
-        let ctx = ctx.clone();
-        let history = history.clone();
 
         Callback::from(move |_| {
             let ctx = ctx.clone();

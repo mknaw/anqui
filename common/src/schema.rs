@@ -1,4 +1,7 @@
 table! {
+    use diesel::sql_types::*;
+    use crate::*;
+
     cards (id) {
         id -> Int4,
         deck_id -> Int4,
@@ -9,15 +12,22 @@ table! {
 }
 
 table! {
+    use diesel::sql_types::*;
+    use crate::*;
+
     decks (id) {
         id -> Int4,
         name -> Text,
         user_id -> Int4,
         revision_length -> Int2,
+        flip_mode -> Flip_mode,
     }
 }
 
 table! {
+    use diesel::sql_types::*;
+    use crate::*;
+
     sessions (id) {
         id -> Int4,
         user_id -> Int4,
@@ -27,6 +37,9 @@ table! {
 }
 
 table! {
+    use diesel::sql_types::*;
+    use crate::*;
+
     users (id) {
         id -> Int4,
         username -> Text,

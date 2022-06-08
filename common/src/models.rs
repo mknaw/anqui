@@ -2,6 +2,7 @@ use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
 
 use crate::schema::*;
+use crate::FlipMode;
 
 #[derive(Identifiable, Queryable)]
 #[table_name = "users"]
@@ -28,6 +29,7 @@ pub struct Deck {
     pub name: String,
     pub user_id: i32,
     pub revision_length: i16,
+    pub flip_mode: FlipMode,
 }
 
 #[derive(AsChangeset, Deserialize)]
@@ -35,6 +37,7 @@ pub struct Deck {
 pub struct PostDeck {
     pub name: Option<String>,
     pub revision_length: Option<i16>,
+    pub flip_mode: Option<FlipMode>,
 }
 
 #[derive(Clone, PartialEq, Associations, Identifiable, Queryable, Deserialize, Serialize)]
@@ -45,4 +48,13 @@ pub struct Card {
     pub front: String,
     pub back: String,
     pub revision_weight: i16,
+}
+
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
+pub struct RevisionCard {
+    pub id: i32,
+    pub deck_id: i32,
+    pub first: String,
+    pub second: String,
+    // pub revision_weight: i16,
 }

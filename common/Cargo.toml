@@ -7,5 +7,6 @@ edition = "2021"
 
 [dependencies]
 chrono = "0.4"
-diesel = { version = "1.4.4", features = ["chrono"] }
+diesel = { version = "1.4.4", features = ["postgres", "chrono"] }
+diesel-derive-enum = { version = "1", features = ["postgres"] }
 serde = { version = "1.0", features = ["derive"] }

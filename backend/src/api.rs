@@ -1,6 +1,7 @@
 use actix_web::{delete, get, post, web, HttpResponse, Responder};
-use common::models::{Card, Deck, PostDeck};
+use common::models::{Card, Deck, PostDeck, RevisionCard};
 use common::query_params::CardReadQuery;
+use common::FlipMode;
 use diesel::dsl::{exists, select, sql, sql_query};
 use diesel::prelude::*;
 use serde::Deserialize;
@@ -304,11 +305,11 @@ async fn get_revision_cards(
 
     let (deck_id,) = path.into_inner();
     let conn = pool.get().unwrap();
-    let revision_length = decks::table
+    let (revision_length, flip_mode) = decks::table
         .filter(decks::id.eq(deck_id))
         .filter(decks::user_id.eq(auth.get_user(&conn).id))
-        .select(decks::revision_length)
-        .first::<i16>(&conn)
+        .select((decks::revision_length, decks::flip_mode))
+        .first::<(i16, FlipMode)>(&conn)
         .unwrap();
     let ids = cards::table
         // TODO it's not really that great to get all of Deck when
@@ -328,5 +329,10 @@ async fn get_revision_cards(
         .load::<Card>(&conn)
         .unwrap();
 
-    HttpResponse::Ok().json(results)
+    let revision_cards: Vec<RevisionCard> = results
+        .into_iter()
+        .map(|card| make_revision_card(&card, flip_mode))
+        .collect();
+
+    HttpResponse::Ok().json(revision_cards)
 }
