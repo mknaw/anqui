@@ -91,7 +91,8 @@ pub fn card_form_modal(CardFormModalProps { deck_id, card_id }: &CardFormModalPr
                 if api::post_vanilla(&api_url, payload).await.is_ok() {
                     ctx.set_modal.emit(None);
                     // TODO doesn't actually trigger refetch.
-                    history.push(AppRoute::DeckDetail { deck_id });
+                    history.go(0);
+                    //history.replace(AppRoute::DeckDetail { deck_id });
                 } // TODO else ...
             });
         })
